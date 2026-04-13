@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PharmaGes — Inventario</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --navy:    #0a0f1e;
+  --navy2:   #0f1829;
+  --navy3:   #111827;
+  --accent:  #2563eb;
+  --accent2: #3b82f6;
+  --glow:    #60a5fa;
+  --white:   #f0f4ff;
+  --muted:   #94a3b8;
+  --border:  rgba(96,165,250,0.12);
+  --sidebar: 180px;
+  --header:  64px;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger:  #ef4444;
+}
+html, body { height: 100%; font-family: 'Sora', sans-serif; background: #0d1117; color: var(--white); overflow: hidden; }
+
+/* ── SIDEBAR (idéntico al dashboard) ── */
+.sidebar {
+  position: fixed; left: 0; top: 0; bottom: 0; width: var(--sidebar);
+  background: var(--navy); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; z-index: 100; padding: 1.25rem 0;
+}
+.sidebar-brand { display: flex; align-items: center; gap: 0.6rem; padding: 0 1.25rem 1.5rem; border-bottom: 1px solid var(--border); }
+.brand-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), var(--glow)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; flex-shrink: 0; }
+.brand-name { font-size: 1rem; font-weight: 700; letter-spacing: -0.02em; }
+.brand-name span { color: var(--glow); }
+.nav { flex: 1; padding: 1rem 0.75rem; display: flex; flex-direction: column; gap: 0.2rem; }
+.nav-item { display: flex; align-items: center; gap: 0.65rem; padding: 0.6rem 0.75rem; border-radius: 8px; font-size: 0.82rem; font-weight: 500; color: var(--muted); cursor: pointer; transition: all 0.15s; text-decoration: none; border: none; background: none; width: 100%; text-align: left; }
+.nav-item:hover { background: rgba(255,255,255,0.05); color: var(--white); }
+.nav-item.active { background: var(--accent); color: #fff; }
+.nav-icon { font-size: 1rem; opacity: 0.7; }
+.nav-divider { height: 1px; background: var(--border); margin: 0.5rem 0.75rem; }
+.sidebar-footer { padding: 0.75rem; display: flex; flex-direction: column; gap: 0.2rem; }
+
+/* ── HEADER ── */
+.header {
+  position: fixed; top: 0; left: var(--sidebar); right: 0; height: var(--header);
+  background: rgba(13,17,23,0.95); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 1.75rem; z-index: 90;
+}
+.header-left h1 { font-size: 1.1rem; font-weight: 600; letter-spacing: -0.02em; }
+.header-left p  { font-size: 0.75rem; color: var(--muted); margin-top: 1px; }
+.header-right { display: flex; align-items: center; gap: 1rem; }
+.notif-btn { position: relative; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 8px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1rem; transition: all 0.2s; }
+.notif-btn:hover { background: rgba(255,255,255,0.1); }
+.notif-badge { position: absolute; top: -4px; right: -4px; width: 16px; height: 16px; background: var(--danger); border-radius: 50%; font-size: 0.6rem; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 2px solid #0d1117; }
+.notif-panel { position: absolute; top: calc(var(--header) + 8px); right: 1.75rem; width: 340px; background: var(--navy2); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); z-index: 200; display: none; overflow: hidden; animation: dropDown 0.2s cubic-bezier(0.16,1,0.3,1); }
+@keyframes dropDown { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+.notif-panel.open { display: block; }
+.notif-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; font-weight: 600; }
+.notif-list { max-height: 320px; overflow-y: auto; }
+.notif-item { display: flex; gap: 0.75rem; align-items: flex-start; padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--border); }
+.notif-item:last-child { border-bottom: none; }
+.notif-dot { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; flex-shrink: 0; }
+.notif-dot.warning { background: rgba(245,158,11,0.15); }
+.notif-dot.danger  { background: rgba(239,68,68,0.15); }
+.notif-text { font-size: 0.8rem; color: var(--white); line-height: 1.4; }
+.notif-time { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+.notif-empty { padding: 2rem; text-align: center; color: var(--muted); font-size: 0.82rem; }
+.user-info { display: flex; align-items: center; gap: 0.6rem; cursor: pointer; padding: 0.35rem 0.6rem; border-radius: 8px; transition: background 0.15s; }
+.user-info:hover { background: rgba(255,255,255,0.05); }
+.user-avatar { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, var(--accent), var(--glow)); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: #fff; flex-shrink: 0; }
+.user-name { font-size: 0.82rem; font-weight: 600; }
+.user-role { font-size: 0.7rem; color: var(--muted); }
+
+/* ── MAIN ── */
+.main {
+  margin-left: var(--sidebar); margin-top: var(--header);
+  height: calc(100vh - var(--header));
+  overflow-y: auto; padding: 1.75rem; background: #0d1117;
+  transition: margin-right 0.3s ease;
+}
+.main.panel-open { margin-right: 420px; }
+
+/* ── TOOLBAR ── */
+.toolbar { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem; }
+
+.search-input {
+  display: flex; align-items: center; gap: 0.5rem;
+  background: var(--navy2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 0.55rem 1rem;
+  flex: 1; max-width: 320px;
+}
+.search-input input {
+  background: none; border: none; outline: none;
+  color: var(--white); font-family: 'Sora', sans-serif; font-size: 0.85rem; width: 100%;
+}
+.search-input input::placeholder { color: var(--muted); }
+
+.btn {
+  display: flex; align-items: center; gap: 0.4rem;
+  padding: 0.55rem 1rem; border-radius: 8px;
+  font-family: 'Sora', sans-serif; font-size: 0.82rem; font-weight: 500;
+  cursor: pointer; border: none; transition: all 0.15s;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
+.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+.btn-outline:hover { border-color: var(--accent2); color: var(--white); }
+.btn-danger  { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+.btn-danger:hover { background: rgba(239,68,68,0.25); }
+
+/* Filtros rápidos */
+.filter-bar { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+.filter-chip {
+  padding: 0.3rem 0.75rem; border-radius: 100px;
+  font-size: 0.75rem; font-weight: 500; cursor: pointer;
+  border: 1px solid var(--border); color: var(--muted);
+  background: transparent; transition: all 0.15s;
+}
+.filter-chip.active { background: rgba(37,99,235,0.2); border-color: var(--accent2); color: var(--glow); }
+.filter-chip:hover { border-color: var(--accent2); color: var(--white); }
+
+/* ── TABLA ── */
+.table-wrap { background: var(--navy2); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+
+.table-header {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1.2fr 1fr 1fr 1fr 100px;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.7rem; font-weight: 600; letter-spacing: 0.06em; color: var(--muted);
+}
+
+.table-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1.2fr 1fr 1fr 1fr 100px;
+  padding: 0.9rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+  transition: background 0.15s;
+  cursor: pointer;
+}
+.table-row:last-child { border-bottom: none; }
+.table-row:hover { background: rgba(255,255,255,0.03); }
+
+.med-name  { font-size: 0.85rem; font-weight: 500; }
+.med-desc  { font-size: 0.72rem; color: var(--muted); margin-top: 1px; }
+.med-code  { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--muted); }
+
+.stock-bar-wrap { display: flex; flex-direction: column; gap: 3px; }
+.stock-val { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; }
+.stock-bar { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.08); }
+.stock-bar-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  padding: 0.2rem 0.6rem; border-radius: 100px;
+  font-size: 0.7rem; font-weight: 600;
+}
+.badge.ok      { background: rgba(34,197,94,0.15); color: #86efac; }
+.badge.bajo    { background: rgba(245,158,11,0.15); color: #fcd34d; }
+.badge.agotado { background: rgba(239,68,68,0.15);  color: #fca5a5; }
+.badge.critico { background: rgba(239,68,68,0.15);  color: #fca5a5; }
+
+.price { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; }
+
+.row-actions { display: flex; gap: 0.35rem; }
+.icon-btn {
+  width: 28px; height: 28px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem; cursor: pointer; border: none;
+  transition: all 0.15s;
+}
+.icon-btn.edit   { background: rgba(37,99,235,0.15); color: var(--accent2); }
+.icon-btn.edit:hover   { background: rgba(37,99,235,0.3); }
+.icon-btn.delete { background: rgba(239,68,68,0.1); color: #fca5a5; }
+.icon-btn.delete:hover { background: rgba(239,68,68,0.25); }
+
+.table-footer {
+  padding: 0.85rem 1.25rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.75rem; color: var(--muted);
+}
+
+/* ── PANEL LATERAL ── */
+.side-panel {
+  position: fixed; top: var(--header); right: -420px; bottom: 0;
+  width: 420px; background: var(--navy2);
+  border-left: 1px solid var(--border);
+  z-index: 80; transition: right 0.3s cubic-bezier(0.16,1,0.3,1);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.side-panel.open { right: 0; }
+
+.panel-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.panel-title { font-size: 0.95rem; font-weight: 600; }
+.panel-sub   { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+.panel-close { background: none; border: none; color: var(--muted); font-size: 1.2rem; cursor: pointer; padding: 0.2rem; transition: color 0.15s; }
+.panel-close:hover { color: var(--white); }
+
+.panel-body { flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; }
+
+.form-section-title { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 0.75rem; }
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+.form-row.triple { grid-template-columns: 1fr 1fr 1fr; }
+
+.form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+.form-label { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em; color: var(--muted); }
+.form-input {
+  padding: 0.65rem 0.85rem; background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border); border-radius: 8px;
+  color: var(--white); font-family: 'Sora', sans-serif; font-size: 0.85rem;
+  outline: none; transition: all 0.2s; width: 100%;
+}
+.form-input:focus { border-color: var(--accent2); background: rgba(37,99,235,0.08); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+.form-input::placeholder { color: rgba(148,163,184,0.5); }
+.input-prefix { position: relative; }
+.input-prefix span { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 0.82rem; pointer-events: none; }
+.input-prefix .form-input { padding-left: 1.5rem; }
+
+.panel-footer {
+  padding: 1.25rem 1.5rem;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 0.75rem;
+}
+.panel-footer .btn { flex: 1; justify-content: center; }
+
+/* ── MODAL CONFIRMAR ── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  z-index: 300; display: none; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--navy2); border: 1px solid var(--border);
+  border-radius: 14px; padding: 2rem; max-width: 400px; width: 90%;
+  animation: modalIn 0.2s cubic-bezier(0.16,1,0.3,1);
+}
+@keyframes modalIn { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }
+.modal-icon { font-size: 2rem; margin-bottom: 0.75rem; }
+.modal-title { font-size: 1rem; font-weight: 600; margin-bottom: 0.4rem; }
+.modal-desc  { font-size: 0.82rem; color: var(--muted); line-height: 1.6; margin-bottom: 1.5rem; }
+.modal-actions { display: flex; gap: 0.75rem; }
+.modal-actions .btn { flex: 1; justify-content: center; }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 1.5rem; right: 1.5rem;
+  background: var(--navy2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 0.85rem 1.25rem;
+  font-size: 0.82rem; display: flex; align-items: center; gap: 0.6rem;
+  z-index: 400; box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+  animation: toastIn 0.3s cubic-bezier(0.16,1,0.3,1);
+  max-width: 320px;
+}
+@keyframes toastIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+.toast.success { border-color: rgba(34,197,94,0.3); }
+.toast.error   { border-color: rgba(239,68,68,0.3); }
+
+.empty-state { padding: 3rem; text-align: center; color: var(--muted); font-size: 0.85rem; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner-sm { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.2); border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; display: inline-block; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-icon">⚕</div>
+    <div class="brand-name">Pharma<span>Ges</span></div>
+  </div>
+  <nav class="nav">
+    <a class="nav-item" href="dashboard.html"><span class="nav-icon">🏠</span> Dashboard</a>
+    <a class="nav-item active" href="inventario.html"><span class="nav-icon">📦</span> Inventario</a>
+    <a class="nav-item" href="ventas.html"><span class="nav-icon">🛒</span> Ventas</a>
+    <a class="nav-item" href="reportes.html"><span class="nav-icon">📊</span> Reportes</a>
+    <a class="nav-item" id="nav-usuarios" href="usuarios.html"><span class="nav-icon">👥</span> Usuarios</a>
+    <div class="nav-divider"></div>
+    <a class="nav-item" href="#"><span class="nav-icon">⚙</span> Configuración</a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="nav-divider"></div>
+    <a class="nav-item" href="#"><span class="nav-icon">❓</span> Ayuda</a>
+    <button class="nav-item" onclick="cerrarSesion()"><span class="nav-icon">🚪</span> Cerrar sesión</button>
+  </div>
+</aside>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <h1>Inventario</h1>
+    <p>Gestiona tus medicamentos y existencias</p>
+  </div>
+  <div class="header-right">
+    <div style="position:relative">
+      <div class="notif-btn" onclick="toggleNotif()" id="notifBtn">🔔
+        <div class="notif-badge" id="notifBadge">0</div>
+      </div>
+      <div class="notif-panel" id="notifPanel">
+        <div class="notif-header"><span>Notificaciones</span><span id="notifCount" style="color:var(--muted);font-weight:400">0 alertas</span></div>
+        <div class="notif-list" id="notifList"><div class="notif-empty">Sin notificaciones</div></div>
+      </div>
+    </div>
+    <div class="user-info">
+      <div class="user-avatar" id="userAvatar">A</div>
+      <div><div class="user-name" id="userName">Admin</div><div class="user-role" id="userRole">Administrador</div></div>
+    </div>
+  </div>
+</header>
+
+<!-- MAIN -->
+<main class="main" id="main">
+  <div class="toolbar">
+    <div class="search-input">
+      <span>🔍</span>
+      <input type="text" id="searchInput" placeholder="Buscar por nombre o código..." oninput="filtrarLocal()">
+    </div>
+    <button class="btn btn-outline" onclick="toggleFiltros()">⚡ Filtros</button>
+    <button class="btn btn-primary" onclick="abrirPanel(null)">+ Agregar medicamento</button>
+  </div>
+
+  <div class="filter-bar" id="filterBar">
+    <button class="filter-chip active" onclick="setFiltro(this,'todos')">Todos</button>
+    <button class="filter-chip" onclick="setFiltro(this,'bajo')">⚠ Stock bajo</button>
+    <button class="filter-chip" onclick="setFiltro(this,'agotado')">🔴 Agotados</button>
+    <button class="filter-chip" onclick="setFiltro(this,'vencer')">📅 Próximos a vencer</button>
+  </div>
+
+  <div class="table-wrap">
+    <div class="table-header">
+      <div>MEDICAMENTO</div>
+      <div>CÓDIGO</div>
+      <div>STOCK</div>
+      <div>VENCIMIENTO</div>
+      <div>PRECIO VENTA</div>
+      <div>ESTADO</div>
+      <div>ACCIONES</div>
+    </div>
+    <div id="tableBody"><div class="empty-state">Cargando inventario...</div></div>
+    <div class="table-footer" id="tableFooter"></div>
+  </div>
+</main>
+
+<!-- PANEL LATERAL -->
+<div class="side-panel" id="sidePanel">
+  <div class="panel-header">
+    <div>
+      <div class="panel-title" id="panelTitle">Nuevo medicamento</div>
+      <div class="panel-sub" id="panelSub">Completa la información del medicamento</div>
+    </div>
+    <button class="panel-close" onclick="cerrarPanel()">✕</button>
+  </div>
+  <div class="panel-body">
+    <div>
+      <div class="form-section-title">INFORMACIÓN BÁSICA</div>
+      <div class="form-row" style="margin-bottom:0.75rem">
+        <div class="form-group">
+          <label class="form-label">NOMBRE</label>
+          <input class="form-input" id="fNombre" placeholder="Paracetamol 500mg">
+        </div>
+        <div class="form-group">
+          <label class="form-label">CÓDIGO</label>
+          <input class="form-input" id="fCodigo" placeholder="PAR-500">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">DESCRIPCIÓN</label>
+        <input class="form-input" id="fDescripcion" placeholder="Analgésico y antipirético">
+      </div>
+    </div>
+    <div>
+      <div class="form-section-title">INVENTARIO</div>
+      <div class="form-row triple">
+        <div class="form-group">
+          <label class="form-label">STOCK ACTUAL</label>
+          <input class="form-input" id="fStock" type="number" min="0" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">STOCK MÍNIMO</label>
+          <input class="form-input" id="fStockMin" type="number" min="0" placeholder="10">
+        </div>
+        <div class="form-group">
+          <label class="form-label">STOCK MÁXIMO</label>
+          <input class="form-input" id="fStockMax" type="number" min="0" placeholder="100">
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="form-section-title">FECHAS Y ALERTAS</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">FECHA DE VENCIMIENTO</label>
+          <input class="form-input" id="fFecha" type="date">
+        </div>
+        <div class="form-group">
+          <label class="form-label">ALERTA VENCIMIENTO (DÍAS)</label>
+          <input class="form-input" id="fAlerta" type="number" min="1" placeholder="30">
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="form-section-title">PRECIOS</div>
+      <div class="form-row">
+        <div class="form-group input-prefix">
+          <label class="form-label">PRECIO DE COMPRA</label>
+          <span>$</span>
+          <input class="form-input" id="fPrecioCompra" type="number" step="0.01" min="0" placeholder="0.00">
+        </div>
+        <div class="form-group input-prefix">
+          <label class="form-label">PRECIO DE VENTA</label>
+          <span>$</span>
+          <input class="form-input" id="fPrecioVenta" type="number" step="0.01" min="0" placeholder="0.00">
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="panel-footer">
+    <button class="btn btn-outline" onclick="cerrarPanel()">Cancelar</button>
+    <button class="btn btn-primary" id="btnGuardar" onclick="guardar()">Guardar cambios</button>
+  </div>
+</div>
+
+<!-- MODAL ELIMINAR -->
+<div class="modal-overlay" id="modalEliminar">
+  <div class="modal">
+    <div class="modal-icon">🗑</div>
+    <div class="modal-title">Confirmar eliminación</div>
+    <div class="modal-desc" id="modalDesc">¿Estás seguro que deseas eliminar este medicamento?</div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn btn-danger" onclick="confirmarEliminar()">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'https://localhost:7092/api';
+const token   = localStorage.getItem('token');
+const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+if (!token) window.location.href = 'login.html';
+
+document.getElementById('userName').textContent  = usuario.nombre || 'Usuario';
+document.getElementById('userRole').textContent   = usuario.rol   || '';
+document.getElementById('userAvatar').textContent = (usuario.nombre || 'U')[0].toUpperCase();
+if (usuario.rol !== 'Administrador') document.getElementById('nav-usuarios').style.display = 'none';
+
+const puedeEditar = ['Administrador','Gerente'].includes(usuario.rol);
+
+let medicamentos = [];
+let filtroActual = 'todos';
+let editandoId   = null;
+let eliminandoId = null;
+
+function apiFetch(url, opts = {}) {
+  return fetch(API + url, {
+    ...opts,
+    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', ...(opts.headers||{}) }
+  });
+}
+
+// ── Notificaciones ──
+function toggleNotif() { document.getElementById('notifPanel').classList.toggle('open'); }
+document.addEventListener('click', e => {
+  if (!e.target.closest('#notifBtn') && !e.target.closest('#notifPanel'))
+    document.getElementById('notifPanel').classList.remove('open');
+});
+
+async function cargarNotifs() {
+  try {
+    const r = await apiFetch('/Dashboard');
+    const d = await r.json();
+    const total = (d.alertasStock||[]).length + (d.alertasVencimiento||[]).length;
+    document.getElementById('notifBadge').textContent = total > 9 ? '9+' : total;
+    document.getElementById('notifCount').textContent = `${total} alertas`;
+    let html = '';
+    (d.alertasStock||[]).forEach(a => { html += `<div class="notif-item"><div class="notif-dot warning">⚠️</div><div><div class="notif-text"><strong>${a.nombre}</strong> — Stock bajo (${a.stock} und.)</div><div class="notif-time">Mín: ${a.stockMinimo}</div></div></div>`; });
+    (d.alertasVencimiento||[]).forEach(a => { html += `<div class="notif-item"><div class="notif-dot danger">📅</div><div><div class="notif-text"><strong>${a.nombre}</strong> — Vence en ${a.diasParaVencer} día(s)</div><div class="notif-time">${a.fechaCaducidad}</div></div></div>`; });
+    document.getElementById('notifList').innerHTML = html || '<div class="notif-empty">Sin notificaciones ✓</div>';
+  } catch {}
+}
+
+// ── Inventario ──
+async function cargarInventario() {
+  try {
+    const r = await apiFetch('/Medicamentos');
+    medicamentos = await r.json();
+    renderTabla(medicamentos);
+  } catch { showToast('Error cargando inventario', 'error'); }
+}
+
+function filtrarLocal() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  let lista = medicamentos;
+  if (filtroActual === 'bajo')    lista = lista.filter(m => m.estadoStock === 'bajo');
+  if (filtroActual === 'agotado') lista = lista.filter(m => m.estadoStock === 'agotado');
+  if (filtroActual === 'vencer')  lista = lista.filter(m => m.fechaCaducidad && diasHasta(m.fechaCaducidad) <= m.alertaVencimientoDias);
+  if (q) lista = lista.filter(m => m.nombre.toLowerCase().includes(q) || m.codigo.toLowerCase().includes(q));
+  renderTabla(lista);
+}
+
+function setFiltro(el, filtro) {
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  filtroActual = filtro;
+  filtrarLocal();
+}
+
+function diasHasta(fecha) {
+  return Math.ceil((new Date(fecha) - new Date()) / 86400000);
+}
+
+function renderTabla(lista) {
+  const body = document.getElementById('tableBody');
+  document.getElementById('tableFooter').textContent = `Mostrando ${lista.length} de ${medicamentos.length} resultados`;
+
+  if (!lista.length) {
+    body.innerHTML = '<div class="empty-state">No se encontraron medicamentos</div>';
+    return;
+  }
+
+  body.innerHTML = lista.map(m => {
+    const pct = Math.min(100, Math.round(m.stock / (m.stockMaximo || 1) * 100));
+    const color = m.estadoStock === 'agotado' ? '#ef4444' : m.estadoStock === 'bajo' ? '#f59e0b' : '#22c55e';
+    const diasV = m.fechaCaducidad ? diasHasta(m.fechaCaducidad) : null;
+    const fechaStr = m.fechaCaducidad
+      ? `<span style="color:${diasV < 30 ? 'var(--danger)' : 'var(--white)'}">${m.fechaCaducidad}</span>`
+      : '<span style="color:var(--muted)">—</span>';
+
+    const acciones = puedeEditar
+      ? `<button class="icon-btn edit" onclick="event.stopPropagation();abrirPanel(${m.id})" title="Editar">✏</button>
+         <button class="icon-btn delete" onclick="event.stopPropagation();pedirEliminar(${m.id},'${m.nombre}')" title="Eliminar">🗑</button>`
+      : '';
+
+    return `<div class="table-row" onclick="abrirPanel(${m.id})">
+      <div>
+        <div class="med-name">${m.nombre}</div>
+        <div class="med-desc">${m.descripcion || '—'}</div>
+      </div>
+      <div class="med-code">${m.codigo}</div>
+      <div class="stock-bar-wrap">
+        <div class="stock-val" style="color:${color}">${m.stock} und.</div>
+        <div class="stock-bar"><div class="stock-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+        <div style="font-size:0.68rem;color:var(--muted)">Mín: ${m.stockMinimo} · Máx: ${m.stockMaximo}</div>
+      </div>
+      <div>${fechaStr}</div>
+      <div class="price">$${Number(m.precioVenta).toFixed(2)}</div>
+      <div><span class="badge ${m.estadoStock}">${m.estadoStock === 'ok' ? '● Óptimo' : m.estadoStock === 'bajo' ? '⚠ Bajo' : '✕ Agotado'}</span></div>
+      <div class="row-actions">${acciones}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Panel ──
+function abrirPanel(id) {
+  editandoId = id;
+  const panel = document.getElementById('sidePanel');
+  const isEdit = id !== null;
+
+  document.getElementById('panelTitle').textContent = isEdit ? 'Editar medicamento' : 'Nuevo medicamento';
+  document.getElementById('panelSub').textContent   = isEdit ? 'Modifica la información' : 'Completa la información';
+  document.getElementById('btnGuardar').textContent = isEdit ? 'Guardar cambios' : 'Crear medicamento';
+
+  // Limpiar
+  ['fNombre','fCodigo','fDescripcion','fStock','fStockMin','fStockMax','fFecha','fAlerta','fPrecioCompra','fPrecioVenta']
+    .forEach(id => document.getElementById(id).value = '');
+
+  document.getElementById('fStockMin').value = 10;
+  document.getElementById('fStockMax').value = 100;
+  document.getElementById('fAlerta').value   = 30;
+
+  // Bloquear código en edición
+  document.getElementById('fCodigo').readOnly = isEdit;
+  document.getElementById('fStock').readOnly  = isEdit; // el stock se mueve por movimientos
+
+  if (isEdit) {
+    const m = medicamentos.find(x => x.id === id);
+    if (m) {
+      document.getElementById('fNombre').value      = m.nombre;
+      document.getElementById('fCodigo').value      = m.codigo;
+      document.getElementById('fDescripcion').value = m.descripcion || '';
+      document.getElementById('fStock').value       = m.stock;
+      document.getElementById('fStockMin').value    = m.stockMinimo;
+      document.getElementById('fStockMax').value    = m.stockMaximo;
+      document.getElementById('fFecha').value       = m.fechaCaducidad || '';
+      document.getElementById('fAlerta').value      = m.alertaVencimientoDias;
+      document.getElementById('fPrecioCompra').value = m.precioCompra;
+      document.getElementById('fPrecioVenta').value  = m.precioVenta;
+    }
+  }
+
+  panel.classList.add('open');
+  document.getElementById('main').classList.add('panel-open');
+}
+
+function cerrarPanel() {
+  document.getElementById('sidePanel').classList.remove('open');
+  document.getElementById('main').classList.remove('panel-open');
+  editandoId = null;
+}
+
+async function guardar() {
+  const btn = document.getElementById('btnGuardar');
+  btn.innerHTML = '<span class="spinner-sm"></span>';
+  btn.disabled  = true;
+
+  const body = {
+    nombre:               document.getElementById('fNombre').value,
+    descripcion:          document.getElementById('fDescripcion').value,
+    stockMinimo:          +document.getElementById('fStockMin').value,
+    stockMaximo:          +document.getElementById('fStockMax').value,
+    fechaCaducidad:       document.getElementById('fFecha').value || null,
+    alertaVencimientoDias:+document.getElementById('fAlerta').value,
+    precioCompra:         +document.getElementById('fPrecioCompra').value,
+    precioVenta:          +document.getElementById('fPrecioVenta').value,
+  };
+
+  if (!editandoId) {
+    body.codigo = document.getElementById('fCodigo').value;
+    body.stock  = +document.getElementById('fStock').value;
+  }
+
+  try {
+    const url    = editandoId ? `/Medicamentos/${editandoId}` : '/Medicamentos';
+    const method = editandoId ? 'PUT' : 'POST';
+    const r = await apiFetch(url, { method, body: JSON.stringify(body) });
+    const d = await r.json();
+    if (r.ok) {
+      showToast(d.mensaje || 'Guardado correctamente', 'success');
+      cerrarPanel();
+      cargarInventario();
+    } else {
+      showToast(d.mensaje || 'Error al guardar', 'error');
+    }
+  } catch { showToast('Error de conexión', 'error'); }
+  finally {
+    btn.textContent = editandoId ? 'Guardar cambios' : 'Crear medicamento';
+    btn.disabled    = false;
+  }
+}
+
+// ── Eliminar ──
+function pedirEliminar(id, nombre) {
+  eliminandoId = id;
+  document.getElementById('modalDesc').textContent = `¿Estás seguro que deseas eliminar "${nombre}"? Esta acción desactivará el medicamento del sistema.`;
+  document.getElementById('modalEliminar').classList.add('open');
+}
+
+function cerrarModal() {
+  document.getElementById('modalEliminar').classList.remove('open');
+  eliminandoId = null;
+}
+
+async function confirmarEliminar() {
+  if (!eliminandoId) return;
+  try {
+    const r = await apiFetch(`/Medicamentos/${eliminandoId}`, { method: 'DELETE' });
+    const d = await r.json();
+    if (r.ok) { showToast(d.mensaje, 'success'); cargarInventario(); }
+    else       { showToast(d.mensaje || 'Error', 'error'); }
+  } catch { showToast('Error de conexión', 'error'); }
+  cerrarModal();
+}
+
+// ── Toast ──
+function showToast(msg, type = 'success') {
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span>${type === 'success' ? '✓' : '⚠'}</span> ${msg}`;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+function toggleFiltros() {
+  const bar = document.getElementById('filterBar');
+  bar.style.display = bar.style.display === 'none' ? 'flex' : 'none';
+}
+
+function cerrarSesion() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('usuario');
+  window.location.href = 'login.html';
+}
+
+cargarInventario();
+cargarNotifs();
+</script>
+</body>
+</html>

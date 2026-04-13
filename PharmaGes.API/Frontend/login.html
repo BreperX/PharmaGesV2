@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PharmaGes — Iniciar sesión</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --navy:    #0a0f1e;
+  --navy2:   #0f1829;
+  --blue:    #1a3a6b;
+  --accent:  #2563eb;
+  --accent2: #3b82f6;
+  --glow:    #60a5fa;
+  --white:   #f0f4ff;
+  --muted:   #94a3b8;
+  --border:  rgba(96,165,250,0.15);
+  --danger:  #ef4444;
+  --success: #22c55e;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Sora', sans-serif;
+  background: var(--navy);
+  color: var(--white);
+  overflow: hidden;
+}
+
+/* ── Fondo animado ── */
+.bg {
+  position: fixed; inset: 0; z-index: 0;
+  background: radial-gradient(ellipse 80% 60% at 20% 50%, #0d2354 0%, transparent 60%),
+              radial-gradient(ellipse 60% 80% at 80% 20%, #0a1f4a 0%, transparent 50%),
+              var(--navy);
+}
+
+.particles {
+  position: fixed; inset: 0; z-index: 1; pointer-events: none;
+  overflow: hidden;
+}
+
+.particle {
+  position: absolute;
+  width: 2px; height: 2px;
+  background: var(--glow);
+  border-radius: 50%;
+  opacity: 0;
+  animation: float linear infinite;
+}
+
+@keyframes float {
+  0%   { opacity: 0; transform: translateY(100vh) scale(0); }
+  10%  { opacity: 0.6; }
+  90%  { opacity: 0.3; }
+  100% { opacity: 0; transform: translateY(-10vh) scale(1.5); }
+}
+
+.grid-lines {
+  position: fixed; inset: 0; z-index: 1; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(96,165,250,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(96,165,250,0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+/* ── Layout ── */
+.layout {
+  position: relative; z-index: 10;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  height: 100vh;
+}
+
+/* ── Panel izquierdo ── */
+.left {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 3rem;
+  border-right: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+
+.left::before {
+  content: '';
+  position: absolute;
+  bottom: -100px; left: -100px;
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(37,99,235,0.2) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.brand-icon {
+  width: 42px; height: 42px;
+  background: linear-gradient(135deg, var(--accent), var(--glow));
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem;
+  box-shadow: 0 0 20px rgba(96,165,250,0.3);
+}
+
+.brand-name {
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--white);
+}
+
+.brand-name span { color: var(--glow); }
+
+.hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2rem;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.85rem;
+  background: rgba(37,99,235,0.15);
+  border: 1px solid rgba(37,99,235,0.3);
+  border-radius: 100px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--glow);
+  width: fit-content;
+}
+
+.hero-badge::before {
+  content: '';
+  width: 6px; height: 6px;
+  background: var(--success);
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
+  50% { opacity: 0.8; box-shadow: 0 0 0 6px rgba(34,197,94,0); }
+}
+
+.hero-title {
+  font-size: 3rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.hero-title .accent { color: var(--glow); }
+
+.hero-sub {
+  font-size: 1rem;
+  color: var(--muted);
+  line-height: 1.7;
+  max-width: 340px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.stat {
+  padding: 1rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.stat-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.4rem;
+  font-weight: 500;
+  color: var(--glow);
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-top: 0.2rem;
+  letter-spacing: 0.05em;
+}
+
+.left-footer {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+/* ── Panel derecho ── */
+.right {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  background: rgba(255,255,255,0.015);
+}
+
+.form-card {
+  width: 100%;
+  max-width: 400px;
+  animation: slideUp 0.6s cubic-bezier(0.16,1,0.3,1) both;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.form-header {
+  margin-bottom: 2.5rem;
+}
+
+.form-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.4rem;
+}
+
+.form-subtitle {
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 0.5rem;
+}
+
+.input-wrap {
+  position: relative;
+}
+
+.input-icon {
+  position: absolute;
+  left: 1rem; top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 1rem;
+  pointer-events: none;
+  transition: color 0.2s;
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.85rem 1rem 0.85rem 2.75rem;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--white);
+  font-family: 'Sora', sans-serif;
+  font-size: 0.9rem;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.form-input::placeholder { color: rgba(148,163,184,0.5); }
+
+.form-input:focus {
+  border-color: var(--accent2);
+  background: rgba(37,99,235,0.08);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+}
+
+.form-input:focus + .input-icon { color: var(--glow); }
+
+.input-wrap:focus-within .input-icon { color: var(--glow); }
+
+.pass-toggle {
+  position: absolute;
+  right: 1rem; top: 50%;
+  transform: translateY(-50%);
+  background: none; border: none;
+  color: var(--muted); cursor: pointer;
+  font-size: 1rem;
+  padding: 0.2rem;
+  transition: color 0.2s;
+}
+.pass-toggle:hover { color: var(--glow); }
+
+.form-extras {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.75rem;
+}
+
+.remember {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.remember input[type=checkbox] {
+  width: 16px; height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.forgot {
+  font-size: 0.82rem;
+  color: var(--accent2);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.forgot:hover { color: var(--glow); }
+
+.btn-login {
+  width: 100%;
+  padding: 0.95rem;
+  background: var(--accent);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-family: 'Sora', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-login::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.1));
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.btn-login:hover {
+  background: var(--accent2);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 25px rgba(37,99,235,0.4);
+}
+.btn-login:hover::before { opacity: 1; }
+.btn-login:active { transform: translateY(0); }
+
+.btn-login.loading {
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.spinner {
+  width: 18px; height: 18px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: none;
+}
+
+.btn-login.loading .spinner { display: block; }
+.btn-login.loading .btn-text { display: none; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.alert {
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  font-size: 0.83rem;
+  margin-top: 1rem;
+  display: none;
+  align-items: center;
+  gap: 0.6rem;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+.alert.error {
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.3);
+  color: #fca5a5;
+  display: flex;
+}
+
+.alert.success {
+  background: rgba(34,197,94,0.1);
+  border: 1px solid rgba(34,197,94,0.3);
+  color: #86efac;
+  display: flex;
+}
+
+.secure-note {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.secure-note span { color: var(--glow); font-size: 1rem; }
+</style>
+</head>
+<body>
+
+<div class="bg"></div>
+<div class="grid-lines"></div>
+<div class="particles" id="particles"></div>
+
+<div class="layout">
+  <!-- Panel izquierdo -->
+  <div class="left">
+    <div class="brand">
+      <div class="brand-icon">⚕</div>
+      <div class="brand-name">Pharma<span>Ges</span></div>
+    </div>
+
+    <div class="hero">
+      <div class="hero-badge">SOFTWARE DE GESTIÓN FARMACÉUTICA</div>
+      <h1 class="hero-title">
+        Gestión<br>
+        <span class="accent">inteligente.</span><br>
+        Decisiones<br>precisas.
+      </h1>
+      <p class="hero-sub">
+        Controla inventario, ventas y reportes de tu farmacia desde un solo lugar, de forma segura y eficiente.
+      </p>
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-num">99.9%</div>
+          <div class="stat-label">UPTIME</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">256-bit</div>
+          <div class="stat-label">CIFRADO</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">24/7</div>
+          <div class="stat-label">SOPORTE</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="left-footer">© 2026 PharmaGes. Todos los derechos reservados.</div>
+  </div>
+
+  <!-- Panel derecho -->
+  <div class="right">
+    <div class="form-card">
+      <div class="form-header">
+        <h2 class="form-title">Bienvenido de nuevo</h2>
+        <p class="form-subtitle">Inicia sesión para continuar</p>
+      </div>
+
+      <form id="loginForm" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label class="form-label">CORREO ELECTRÓNICO</label>
+          <div class="input-wrap">
+            <span class="input-icon">✉</span>
+            <input type="email" id="email" class="form-input"
+              placeholder="usuario@correo.com" required autocomplete="email">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">CONTRASEÑA</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔒</span>
+            <input type="password" id="password" class="form-input"
+              placeholder="••••••••" required autocomplete="current-password">
+            <button type="button" class="pass-toggle" onclick="togglePass()" id="passToggle">👁</button>
+          </div>
+        </div>
+
+        <div class="form-extras">
+          <label class="remember">
+            <input type="checkbox" id="remember"> Recordarme
+          </label>
+          <a href="#" class="forgot">¿Olvidaste tu contraseña?</a>
+        </div>
+
+        <button type="submit" class="btn-login" id="loginBtn">
+          <div class="spinner"></div>
+          <span class="btn-text">Acceder →</span>
+        </button>
+
+        <div class="alert" id="alertBox"></div>
+      </form>
+
+      <div class="secure-note">
+        <span>🛡</span>
+        Tus datos están protegidos con <strong style="color:var(--white);margin-left:4px">cifrado de nivel empresarial.</strong>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Partículas
+const container = document.getElementById('particles');
+for (let i = 0; i < 40; i++) {
+  const p = document.createElement('div');
+  p.className = 'particle';
+  p.style.cssText = `
+    left: ${Math.random()*100}%;
+    width: ${Math.random()*3+1}px;
+    height: ${Math.random()*3+1}px;
+    animation-duration: ${Math.random()*15+8}s;
+    animation-delay: ${Math.random()*10}s;
+    opacity: ${Math.random()*0.5+0.1};
+  `;
+  container.appendChild(p);
+}
+
+// Toggle contraseña
+function togglePass() {
+  const input = document.getElementById('password');
+  const btn = document.getElementById('passToggle');
+  if (input.type === 'password') {
+    input.type = 'text';
+    btn.textContent = '🙈';
+  } else {
+    input.type = 'password';
+    btn.textContent = '👁';
+  }
+}
+
+// Mostrar alerta
+function showAlert(msg, type) {
+  const box = document.getElementById('alertBox');
+  box.className = `alert ${type}`;
+  box.textContent = (type === 'error' ? '⚠ ' : '✓ ') + msg;
+}
+
+// Login
+async function handleLogin(e) {
+  e.preventDefault();
+  const btn = document.getElementById('loginBtn');
+  btn.classList.add('loading');
+
+  const email    = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+
+  try {
+    const res = await fetch('https://localhost:7092/api/Auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, contrasena: password })
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('usuario', JSON.stringify({
+        nombre: data.nombre,
+        email:  data.email,
+        rol:    data.rol,
+        foto:   data.fotoUrl
+      }));
+      showAlert('Inicio de sesión exitoso. Redirigiendo...', 'success');
+      setTimeout(() => window.location.href = 'dashboard.html', 1200);
+    } else {
+      showAlert(data.mensaje || 'Credenciales incorrectas.', 'error');
+    }
+  } catch (err) {
+    showAlert('No se pudo conectar con el servidor.', 'error');
+  } finally {
+    btn.classList.remove('loading');
+  }
+}
+</script>
+</body>
+</html>

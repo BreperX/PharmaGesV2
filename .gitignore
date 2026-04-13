@@ -1,0 +1,13 @@
+appsettings.json
+appsettings.Development.json
+bin/
+obj/
+publish/
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+node_modules/
+.env
+.DS_Store
+Thumbs.db
