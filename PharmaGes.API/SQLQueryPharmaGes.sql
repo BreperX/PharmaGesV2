@@ -10,13 +10,6 @@ USE PharmaGesDB;
 GO
 
 
-USE PharmaGesDB;
-GO
-UPDATE usuarios 
-SET contrasena_hash = '$2a$12$sOa2RnsHZOzpJd6KtxWxR.59QZtSWwlnKhWP/ngiN/Q4JGhB/WFqe'
-WHERE email = 'admin@pharma.com';
--- La contraseña es: Admin123!
-
 -- ============================================================
 -- ROLES
 -- ============================================================
@@ -24,7 +17,7 @@ CREATE TABLE roles (
     id          INT IDENTITY(1,1) PRIMARY KEY,
     nombre      NVARCHAR(50)  NOT NULL UNIQUE,
     es_activo   BIT           NOT NULL DEFAULT 1,
-    creado_en   DATETIME2     NOT NULL DEFAULT GETDATE()
+    creado_en   DATETIME2     NOT NULL DEFAULT SYSUTCDATETIME()
 );
 
 -- Datos iniciales
@@ -44,8 +37,8 @@ CREATE TABLE usuarios (
     es_activo           BIT           NOT NULL DEFAULT 1,
     intentos_fallidos   INT           NOT NULL DEFAULT 0,
     bloqueado_hasta     DATETIME2     NULL,
-    creado_en           DATETIME2     NOT NULL DEFAULT GETDATE(),
-    actualizado_en      DATETIME2     NOT NULL DEFAULT GETDATE(),
+    creado_en           DATETIME2     NOT NULL DEFAULT SYSUTCDATETIME(),
+    actualizado_en      DATETIME2     NOT NULL DEFAULT SYSUTCDATETIME(),
 
     CONSTRAINT FK_usuarios_roles FOREIGN KEY (rol_id) REFERENCES roles(id)
 );
@@ -65,7 +58,7 @@ CREATE TABLE sesiones (
     usuario_id  INT           NOT NULL,
     token       NVARCHAR(500) NOT NULL UNIQUE,
     expira_en   DATETIME2     NOT NULL,
-    creado_en   DATETIME2     NOT NULL DEFAULT GETDATE(),
+    creado_en   DATETIME2     NOT NULL DEFAULT SYSUTCDATETIME(),
 
     CONSTRAINT FK_sesiones_usuarios FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
 );
@@ -88,8 +81,8 @@ CREATE TABLE medicamentos (
     fecha_caducidad         DATE            NULL,
     alerta_vencimiento_dias INT             NOT NULL DEFAULT 30,
     es_activo               BIT             NOT NULL DEFAULT 1,
-    creado_en               DATETIME2       NOT NULL DEFAULT GETDATE(),
-    actualizado_en          DATETIME2       NOT NULL DEFAULT GETDATE(),
+    creado_en               DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+    actualizado_en          DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
 
     CONSTRAINT FK_medicamentos_usuarios FOREIGN KEY (creado_por) REFERENCES usuarios(id),
     CONSTRAINT CHK_stock_minimo CHECK (stock_minimo >= 0),
@@ -111,7 +104,7 @@ CREATE TABLE movimientos_inventario (
     stock_anterior  INT             NOT NULL,
     stock_nuevo     INT             NOT NULL,
     motivo          NVARCHAR(300)   NULL,
-    creado_en       DATETIME2       NOT NULL DEFAULT GETDATE(),
+    creado_en       DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
 
     CONSTRAINT FK_movimientos_medicamentos FOREIGN KEY (medicamento_id) REFERENCES medicamentos(id),
     CONSTRAINT FK_movimientos_usuarios     FOREIGN KEY (usuario_id)     REFERENCES usuarios(id),
@@ -133,7 +126,7 @@ CREATE TABLE facturas (
     efectivo_recibido   DECIMAL(10,2)   NOT NULL DEFAULT 0,
     cambio              DECIMAL(10,2)   NOT NULL DEFAULT 0,
     notas               NVARCHAR(500)   NULL,
-    creado_en           DATETIME2       NOT NULL DEFAULT GETDATE(),
+    creado_en           DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
 
     CONSTRAINT FK_facturas_usuarios FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
     CONSTRAINT CHK_estado_factura CHECK (estado IN ('activa', 'anulada'))
@@ -222,12 +215,12 @@ SELECT
     stock,
     fecha_caducidad,
     alerta_vencimiento_dias,
-    DATEDIFF(day, GETDATE(), fecha_caducidad) AS dias_para_vencer
+    DATEDIFF(day, SYSUTCDATETIME(), fecha_caducidad) AS dias_para_vencer
 FROM medicamentos
 WHERE
     es_activo = 1
     AND fecha_caducidad IS NOT NULL
-    AND fecha_caducidad <= DATEADD(day, alerta_vencimiento_dias, GETDATE());
+    AND fecha_caducidad <= DATEADD(day, alerta_vencimiento_dias, SYSUTCDATETIME());
 GO
 
 -- ============================================================
@@ -241,5 +234,17 @@ SELECT
 FROM facturas
 WHERE
     estado = 'activa'
-    AND CAST(creado_en AS DATE) = CAST(GETDATE() AS DATE);
+    AND CAST(creado_en AS DATE) = CAST(SYSUTCDATETIME() AS DATE);
 GO
+
+-- ============================================================
+-- Actualizar Admin
+-- ============================================================
+
+USE PharmaGesDB;
+GO
+UPDATE usuarios 
+SET contrasena_hash = '$2a$12$sOa2RnsHZOzpJd6KtxWxR.59QZtSWwlnKhWP/ngiN/Q4JGhB/WFqe'
+WHERE email = 'admin@pharma.com';
+-- La contraseña es: Admin123!
+

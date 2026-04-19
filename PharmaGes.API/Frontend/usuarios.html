@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PharmaGes — Usuarios</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="components.js"></script>
+</head>
+<body class="usuarios" data-title="Usuarios" data-subtitle="Gestiona los usuarios y roles del sistema">
+
+<main class="main" id="main">
+  <div class="toolbar">
+    <div class="search-input">
+      <i data-lucide="search" style="width:15px;height:15px;color:var(--text-light)"></i>
+      <input type="text" id="searchInput" placeholder="Buscar por nombre o correo..." oninput="filtrar()">
+    </div>
+    <button class="btn btn-primary" onclick="abrirPanel(null)">
+      <i data-lucide="user-plus" style="width:15px;height:15px"></i> Nuevo usuario
+    </button>
+  </div>
+
+  <div class="table-wrap">
+    <div class="table-header">
+      <div>USUARIO</div><div>CORREO</div><div>ROL</div><div>ESTADO</div><div>ACCIONES</div>
+    </div>
+    <div id="tableBody"><div class="empty-state">Cargando usuarios...</div></div>
+    <div class="table-footer">
+      <span id="footerText"></span>
+      <div class="pagination" id="pagination"></div>
+    </div>
+  </div>
+</main>
+
+<!-- PANEL LATERAL -->
+<div class="side-panel" id="sidePanel">
+  <div class="panel-header">
+    <div>
+      <div class="panel-title" id="panelTitle">Nuevo usuario</div>
+      <div class="panel-sub" id="panelSub">Completa la información del usuario</div>
+    </div>
+    <button class="panel-close" onclick="cerrarPanel()"><i data-lucide="x"></i></button>
+  </div>
+  <div class="panel-body">
+    <div>
+      <div class="form-section-title">Información personal</div>
+      <div class="form-row" style="margin-bottom:0.85rem">
+        <div class="form-group"><label class="form-label">Nombre</label><input class="form-input" id="fNombre" placeholder="Nombre completo"></div>
+        <div class="form-group"><label class="form-label">Apellido</label><input class="form-input" id="fApellido" placeholder="Apellido"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Correo electrónico</label><input class="form-input" id="fEmail" type="email" placeholder="usuario@correo.com"></div>
+    </div>
+    <div>
+      <div class="form-section-title">Acceso</div>
+      <div class="form-group">
+        <label class="form-label">Rol</label>
+        <select class="form-input" id="fRol">
+          <option value="Administrador">Administrador</option>
+          <option value="Vendedor">Vendedor</option>
+          <option value="Gerente">Gerente</option>
+        </select>
+      </div>
+      <div class="form-group" id="passGroup"><label class="form-label">Contraseña</label><input class="form-input" id="fPassword" type="password" placeholder="••••••••"></div>
+    </div>
+  </div>
+  <div class="panel-footer">
+    <button class="btn btn-outline" onclick="cerrarPanel()">Cancelar</button>
+    <button class="btn btn-primary" id="btnGuardar" onclick="guardar()">Crear usuario</button>
+  </div>
+</div>
+
+<!-- MODAL ELIMINAR -->
+<div class="modal-overlay" id="modalEliminar">
+  <div class="modal">
+    <div class="modal-icon"><i data-lucide="user-x" style="width:32px;height:32px;color:var(--danger)"></i></div>
+    <div class="modal-title">Confirmar eliminación</div>
+    <div class="modal-desc" id="modalDesc">¿Estás seguro que deseas eliminar este usuario?</div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn btn-danger" onclick="confirmarEliminar()">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API     = 'https://localhost:7092/api';
+const token   = localStorage.getItem('token');
+const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+if (!token) window.location.href = 'login.html';
+if (usuario.rol !== 'Administrador') window.location.href = 'dashboard.html';
+
+let usuarios = [], editandoId = null, eliminandoId = null;
+
+function apiFetch(url, opts = {}) {
+  return fetch(API + url, { ...opts, headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', ...(opts.headers||{}) } });
+}
+
+function toggleNotif() { document.getElementById('notifPanel').classList.toggle('open'); }
+
+function renderNotifs(alertasStock, alertasVenc) {
+  const total = alertasStock.length + alertasVenc.length;
+  document.getElementById('notifBadge').textContent = total > 9 ? '9+' : total;
+  document.getElementById('notifCount').textContent = `${total} alerta${total !== 1 ? 's' : ''}`;
+  
+  if (!total) { 
+    document.getElementById('notifList').innerHTML = '<div class="notif-empty">Sin notificaciones nuevas ✓</div>'; 
+    return; 
+  }
+
+  let html = '';
+
+  alertasStock.forEach(a => {
+    const stockColor = a.stock === 0 ? 'var(--danger)' : 'var(--warning)';
+    const stockText  = a.stock === 0 ? 'SIN STOCK' : `Stock bajo (${a.stock} und.)`;
+
+    html += `
+      <div class="notif-item">
+        <div class="notif-dot warning"><i data-lucide="alert-triangle" style="width:14px;height:14px;color:${stockColor}"></i></div>
+        <div>
+          <div class="notif-text"><strong>${a.nombre}</strong> — <span style="color:${stockColor}; font-weight:bold;">${stockText}</span></div>
+          <div class="notif-time">Mínimo: ${a.stockMinimo} und.</div>
+        </div>
+      </div>`;
+  });
+
+  alertasVenc.forEach(a => {
+    let vencimientoTexto = '';
+    const dias = a.diasParaVencer;
+
+    if (dias < 0) {
+      vencimientoTexto = `<span style="color:var(--danger); font-weight:bold;">Venció hace ${Math.abs(dias)} día(s)</span>`;
+    } else if (dias === 0) {
+      vencimientoTexto = `<span style="color:var(--danger); font-weight:bold;">Vence HOY</span>`;
+    } else {
+      vencimientoTexto = `Vence en ${dias} día(s)`;
+    }
+
+    html += `
+      <div class="notif-item">
+        <div class="notif-dot danger"><i data-lucide="clock" style="width:14px;height:14px;color:var(--danger)"></i></div>
+        <div>
+          <div class="notif-text"><strong>${a.nombre}</strong> — ${vencimientoTexto}</div>
+          <div class="notif-time">Fecha: ${a.fechaCaducidad}</div>
+        </div>
+      </div>`;
+  });
+
+  document.getElementById('notifList').innerHTML = html;
+  lucide.createIcons();
+}
+
+async function cargarNotifs() {
+  try {
+    const r = await apiFetch('/Dashboard');
+    const data = await r.json();
+    renderNotifs(data.alertasStock || [], data.alertasVencimiento || []);
+  } catch (err) {
+    console.error('Error al cargar notificaciones:', err);
+  }
+}
+
+async function cargar() {
+  try {
+    const r = await apiFetch('/Usuarios');
+    usuarios = await r.json();
+    renderTabla(listaFiltrada());
+  } catch { showToast('Error cargando usuarios', 'error'); }
+}
+
+function listaFiltrada() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  return q ? usuarios.filter(u => u.nombre?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q)) : usuarios;
+}
+
+function filtrar() { renderTabla(listaFiltrada()); }
+
+function renderTabla(lista) {
+  document.getElementById('footerText').textContent = `${lista.length} usuario${lista.length !== 1 ? 's' : ''}`;
+  const body = document.getElementById('tableBody');
+  if (!lista.length) { body.innerHTML = '<div class="empty-state">No se encontraron usuarios</div>'; return; }
+  body.innerHTML = lista.map(u => {
+    const inicial = (u.nombre || 'U')[0].toUpperCase();
+    const rolColor = u.rol === 'Administrador' ? 'var(--accent)' : u.rol === 'Gerente' ? 'var(--warning)' : 'var(--success)';
+    const rolBg    = u.rol === 'Administrador' ? 'var(--accent-light)' : u.rol === 'Gerente' ? 'var(--warning-bg)' : 'var(--success-bg)';
+    return `<div class="table-row">
+      <div style="display:flex;align-items:center;gap:0.75rem">
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:700;color:#fff;flex-shrink:0">${inicial}</div>
+        <div>
+          <div style="font-size:0.875rem;font-weight:500">${u.nombre || '—'}</div>
+          <div style="font-size:0.75rem;color:var(--text-muted)">${u.apellido || ''}</div>
+        </div>
+      </div>
+      <div style="font-size:0.875rem;color:var(--text-muted)">${u.email || '—'}</div>
+      <div><span style="padding:0.22rem 0.7rem;border-radius:100px;font-size:0.72rem;font-weight:600;background:${rolBg};color:${rolColor}">${u.rol || '—'}</span></div>
+      <div><span class="badge ok">Activo</span></div>
+      <div style="display:flex;gap:0.4rem">
+        <button class="icon-btn edit" onclick="abrirPanel(${u.id})" title="Editar"><i data-lucide="pencil" style="width:14px;height:14px"></i></button>
+        <button class="icon-btn delete" onclick="pedirEliminar(${u.id},'${u.nombre}')" title="Eliminar"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+  lucide.createIcons();
+}
+
+function abrirPanel(id) {
+  editandoId = id;
+  const isEdit = id !== null;
+  document.getElementById('panelTitle').textContent = isEdit ? 'Editar usuario' : 'Nuevo usuario';
+  document.getElementById('panelSub').textContent   = isEdit ? 'Modifica la información' : 'Completa la información';
+  document.getElementById('btnGuardar').textContent = isEdit ? 'Guardar cambios' : 'Crear usuario';
+  document.getElementById('passGroup').style.display = isEdit ? 'none' : 'flex';
+  ['fNombre','fApellido','fEmail','fPassword'].forEach(i => document.getElementById(i).value = '');
+  if (isEdit) {
+    const u = usuarios.find(x => x.id === id);
+    if (u) {
+      document.getElementById('fNombre').value   = u.nombre || '';
+      document.getElementById('fApellido').value = u.apellido || '';
+      document.getElementById('fEmail').value    = u.email || '';
+      document.getElementById('fRol').value      = u.rol || 'Vendedor';
+    }
+  }
+  document.getElementById('sidePanel').classList.add('open');
+  document.getElementById('main').classList.add('panel-open');
+}
+
+function cerrarPanel() {
+  document.getElementById('sidePanel').classList.remove('open');
+  document.getElementById('main').classList.remove('panel-open');
+  editandoId = null;
+}
+
+async function guardar() {
+  const btn = document.getElementById('btnGuardar');
+  btn.innerHTML = '<span class="spinner-sm"></span>'; btn.disabled = true;
+  const body = {
+    nombre: document.getElementById('fNombre').value,
+    apellido: document.getElementById('fApellido').value,
+    email: document.getElementById('fEmail').value,
+    rol: document.getElementById('fRol').value,
+  };
+  if (!editandoId) body.contrasena = document.getElementById('fPassword').value;
+  try {
+    const r = await apiFetch(editandoId ? `/Usuarios/${editandoId}` : '/Usuarios', { method: editandoId ? 'PUT' : 'POST', body: JSON.stringify(body) });
+    const d = await r.json();
+    if (r.ok) { showToast(d.mensaje || 'Guardado correctamente', 'success'); cerrarPanel(); cargar(); }
+    else       { showToast(d.mensaje || 'Error al guardar', 'error'); }
+  } catch { showToast('Error de conexión', 'error'); }
+  finally { btn.textContent = editandoId ? 'Guardar cambios' : 'Crear usuario'; btn.disabled = false; }
+}
+
+function pedirEliminar(id, nombre) {
+  eliminandoId = id;
+  document.getElementById('modalDesc').textContent = `¿Estás seguro que deseas eliminar a "${nombre}"?`;
+  document.getElementById('modalEliminar').classList.add('open');
+  lucide.createIcons();
+}
+function cerrarModal() { document.getElementById('modalEliminar').classList.remove('open'); eliminandoId = null; }
+async function confirmarEliminar() {
+  if (!eliminandoId) return;
+  try {
+    const r = await apiFetch(`/Usuarios/${eliminandoId}`, { method: 'DELETE' });
+    const d = await r.json();
+    if (r.ok) { showToast(d.mensaje, 'success'); cargar(); }
+    else       { showToast(d.mensaje || 'Error', 'error'); }
+  } catch { showToast('Error de conexión', 'error'); }
+  cerrarModal();
+}
+
+function showToast(msg, type = 'success') {
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span class="toast-icon ${type}">${type === 'success' ? '✓' : '⚠'}</span> ${msg}`;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('userName').textContent   = usuario.nombre || 'Usuario';
+  document.getElementById('userRole').textContent   = usuario.rol   || '';
+  document.getElementById('userAvatar').textContent = (usuario.nombre || 'U')[0].toUpperCase();
+  lucide.createIcons();
+  cargar();
+  cargarNotifs();
+});
+</script>
+</body>
+</html>

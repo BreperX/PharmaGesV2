@@ -21,7 +21,7 @@ namespace PharmaGes.API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetDashboard()
         {
-            var hoy = DateTime.Today;
+            var hoy  = DateTime.Today;
             var ayer = hoy.AddDays(-1);
 
             var ventasHoy = await _db.Facturas
@@ -67,14 +67,45 @@ namespace PharmaGes.API.Controllers
 
             return Ok(new DashboardDto
             {
-                VentasHoy               = ventasHoy,
-                VentasAyer              = ventasAyer,
-                ProductosBajoStock      = alertasStock.Count,
+                VentasHoy                = ventasHoy,
+                VentasAyer               = ventasAyer,
+                ProductosBajoStock       = alertasStock.Count,
                 ProductosProximosAVencer = alertasVencimiento.Count,
-                AlertasStock            = alertasStock,
-                AlertasVencimiento      = alertasVencimiento,
-                VentasRecientes         = ventasRecientes
+                AlertasStock             = alertasStock,
+                AlertasVencimiento       = alertasVencimiento,
+                VentasRecientes          = ventasRecientes
             });
+        }
+
+        /// <summary>
+        /// Ventas de los últimos N días — para la gráfica del dashboard
+        /// Rellena con 0 los días sin ventas para que la gráfica sea continua
+        /// </summary>
+        [HttpGet("ventas-por-dia")]
+        public async Task<IActionResult> GetVentasPorDia([FromQuery] int dias = 7)
+        {
+            var desde = DateTime.Today.AddDays(-(dias - 1));
+
+            var ventas = await _db.Facturas
+                .Where(f => f.Estado == "activa" && f.CreadoEn.Date >= desde)
+                .GroupBy(f => f.CreadoEn.Date)
+                .Select(g => new { Fecha = g.Key, Total = g.Sum(f => f.Total) })
+                .ToListAsync();
+
+            var cultura    = new System.Globalization.CultureInfo("es-CO");
+            var resultado  = Enumerable.Range(0, dias).Select(i =>
+            {
+                var fecha = desde.AddDays(i);
+                var venta = ventas.FirstOrDefault(v => v.Fecha == fecha);
+                return new
+                {
+                    fecha = fecha.ToString("yyyy-MM-dd"),
+                    label = fecha.ToString("ddd", cultura),
+                    total = venta?.Total ?? 0
+                };
+            }).ToList();
+
+            return Ok(resultado);
         }
 
         [HttpGet("estadisticas")]
@@ -84,13 +115,12 @@ namespace PharmaGes.API.Controllers
             [FromQuery] DateTime? hasta)
         {
             var query = _db.Facturas.Where(f => f.Estado == "activa");
-
             if (desde.HasValue) query = query.Where(f => f.CreadoEn >= desde);
             if (hasta.HasValue) query = query.Where(f => f.CreadoEn <= hasta.Value.AddDays(1));
 
-            var total        = await query.SumAsync(f => (decimal?)f.Total) ?? 0;
+            var total         = await query.SumAsync(f => (decimal?)f.Total) ?? 0;
             var transacciones = await query.CountAsync();
-            var promedio     = transacciones > 0 ? total / transacciones : 0;
+            var promedio      = transacciones > 0 ? total / transacciones : 0;
 
             var masVendidos = await _db.DetallesFactura
                 .Include(d => d.Factura)
@@ -100,10 +130,10 @@ namespace PharmaGes.API.Controllers
                 .GroupBy(d => new { d.MedicamentoNombre, d.MedicamentoCodigo })
                 .Select(g => new MedicamentoMasVendidoDto
                 {
-                    Nombre           = g.Key.MedicamentoNombre,
-                    Codigo           = g.Key.MedicamentoCodigo,
-                    CantidadVendida  = g.Sum(d => d.Cantidad),
-                    TotalGenerado    = g.Sum(d => d.Subtotal)
+                    Nombre          = g.Key.MedicamentoNombre,
+                    Codigo          = g.Key.MedicamentoCodigo,
+                    CantidadVendida = g.Sum(d => d.Cantidad),
+                    TotalGenerado   = g.Sum(d => d.Subtotal)
                 })
                 .OrderByDescending(m => m.CantidadVendida)
                 .Take(10)

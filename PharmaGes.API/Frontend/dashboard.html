@@ -4,644 +4,251 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PharmaGes — Dashboard</title>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-:root {
-  --navy:    #0a0f1e;
-  --navy2:   #0f1829;
-  --navy3:   #111827;
-  --blue:    #1a3a6b;
-  --accent:  #2563eb;
-  --accent2: #3b82f6;
-  --glow:    #60a5fa;
-  --white:   #f0f4ff;
-  --muted:   #94a3b8;
-  --border:  rgba(96,165,250,0.12);
-  --sidebar: 180px;
-  --header:  64px;
-  --success: #22c55e;
-  --warning: #f59e0b;
-  --danger:  #ef4444;
-}
-
-html, body { height: 100%; font-family: 'Sora', sans-serif; background: #0d1117; color: var(--white); overflow: hidden; }
-
-/* ── SIDEBAR ── */
-.sidebar {
-  position: fixed; left: 0; top: 0; bottom: 0;
-  width: var(--sidebar);
-  background: var(--navy);
-  border-right: 1px solid var(--border);
-  display: flex; flex-direction: column;
-  z-index: 100;
-  padding: 1.25rem 0;
-}
-
-.sidebar-brand {
-  display: flex; align-items: center; gap: 0.6rem;
-  padding: 0 1.25rem 1.5rem;
-  border-bottom: 1px solid var(--border);
-}
-
-.brand-icon {
-  width: 32px; height: 32px;
-  background: linear-gradient(135deg, var(--accent), var(--glow));
-  border-radius: 8px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.9rem;
-  flex-shrink: 0;
-}
-
-.brand-name { font-size: 1rem; font-weight: 700; letter-spacing: -0.02em; }
-.brand-name span { color: var(--glow); }
-
-.nav { flex: 1; padding: 1rem 0.75rem; display: flex; flex-direction: column; gap: 0.2rem; }
-
-.nav-item {
-  display: flex; align-items: center; gap: 0.65rem;
-  padding: 0.6rem 0.75rem;
-  border-radius: 8px;
-  font-size: 0.82rem; font-weight: 500;
-  color: var(--muted);
-  cursor: pointer;
-  transition: all 0.15s;
-  text-decoration: none;
-  border: none; background: none; width: 100%; text-align: left;
-}
-
-.nav-item:hover { background: rgba(255,255,255,0.05); color: var(--white); }
-.nav-item.active { background: var(--accent); color: #fff; }
-.nav-item.active .nav-icon { opacity: 1; }
-.nav-icon { font-size: 1rem; opacity: 0.7; }
-
-.nav-divider { height: 1px; background: var(--border); margin: 0.5rem 0.75rem; }
-
-.sidebar-footer { padding: 0.75rem; display: flex; flex-direction: column; gap: 0.2rem; }
-
-/* ── HEADER ── */
-.header {
-  position: fixed; top: 0; left: var(--sidebar); right: 0;
-  height: var(--header);
-  background: rgba(13,17,23,0.95);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 1.75rem;
-  z-index: 90;
-}
-
-.header-left h1 { font-size: 1.1rem; font-weight: 600; letter-spacing: -0.02em; }
-.header-left p  { font-size: 0.75rem; color: var(--muted); margin-top: 1px; }
-
-.header-right { display: flex; align-items: center; gap: 1rem; }
-
-
-/* Notificaciones */
-.notif-btn {
-  position: relative;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  width: 36px; height: 36px;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; font-size: 1rem;
-  transition: all 0.2s;
-}
-.notif-btn:hover { background: rgba(255,255,255,0.1); }
-
-.notif-badge {
-  position: absolute; top: -4px; right: -4px;
-  width: 16px; height: 16px;
-  background: var(--danger);
-  border-radius: 50%;
-  font-size: 0.6rem; font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-  border: 2px solid #0d1117;
-}
-
-.notif-panel {
-  position: absolute; top: calc(var(--header) + 8px); right: 1.75rem;
-  width: 340px;
-  background: var(--navy2);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-  z-index: 200;
-  display: none;
-  overflow: hidden;
-  animation: dropDown 0.2s cubic-bezier(0.16,1,0.3,1);
-}
-
-@keyframes dropDown { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
-
-.notif-panel.open { display: block; }
-
-.notif-header {
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid var(--border);
-  display: flex; justify-content: space-between; align-items: center;
-  font-size: 0.85rem; font-weight: 600;
-}
-
-.notif-list { max-height: 320px; overflow-y: auto; }
-
-.notif-item {
-  display: flex; gap: 0.75rem; align-items: flex-start;
-  padding: 0.85rem 1.25rem;
-  border-bottom: 1px solid var(--border);
-  transition: background 0.15s;
-}
-.notif-item:hover { background: rgba(255,255,255,0.03); }
-.notif-item:last-child { border-bottom: none; }
-
-.notif-dot {
-  width: 32px; height: 32px; border-radius: 8px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.9rem; flex-shrink: 0; margin-top: 1px;
-}
-.notif-dot.warning { background: rgba(245,158,11,0.15); }
-.notif-dot.danger  { background: rgba(239,68,68,0.15); }
-.notif-dot.info    { background: rgba(37,99,235,0.15); }
-
-.notif-text { font-size: 0.8rem; color: var(--white); line-height: 1.4; }
-.notif-time { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
-
-.notif-empty { padding: 2rem; text-align: center; color: var(--muted); font-size: 0.82rem; }
-
-/* Usuario */
-.user-info {
-  display: flex; align-items: center; gap: 0.6rem;
-  cursor: pointer; padding: 0.35rem 0.6rem;
-  border-radius: 8px; transition: background 0.15s;
-}
-.user-info:hover { background: rgba(255,255,255,0.05); }
-
-.user-avatar {
-  width: 32px; height: 32px; border-radius: 8px;
-  background: linear-gradient(135deg, var(--accent), var(--glow));
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.75rem; font-weight: 700; color: #fff;
-  flex-shrink: 0;
-}
-
-.user-name  { font-size: 0.82rem; font-weight: 600; }
-.user-role  { font-size: 0.7rem; color: var(--muted); }
-
-/* ── MAIN ── */
-.main {
-  margin-left: var(--sidebar);
-  margin-top: var(--header);
-  height: calc(100vh - var(--header));
-  overflow-y: auto;
-  padding: 1.75rem;
-  background: #0d1117;
-}
-
-/* ── CARDS ── */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.stat-card {
-  background: var(--navy2);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 1.25rem;
-  display: flex; flex-direction: column; gap: 0.5rem;
-  transition: border-color 0.2s;
-}
-.stat-card:hover { border-color: rgba(96,165,250,0.3); }
-
-.stat-label { font-size: 0.75rem; color: var(--muted); font-weight: 500; }
-
-.stat-val {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 1.5rem; font-weight: 500;
-}
-
-.stat-val.blue    { color: var(--glow); }
-.stat-val.warning { color: var(--warning); }
-.stat-val.danger  { color: var(--danger); }
-
-.stat-sub { font-size: 0.72rem; color: var(--muted); }
-.stat-sub .up   { color: var(--success); }
-.stat-sub .down { color: var(--danger); }
-
-/* ── Fila media ── */
-.mid-row {
-  display: grid;
-  grid-template-columns: 1fr 340px;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.card {
-  background: var(--navy2);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 1.25rem;
-}
-
-.card-header {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 1rem;
-}
-
-.card-title { font-size: 0.9rem; font-weight: 600; }
-
-.card-action {
-  font-size: 0.75rem; color: var(--accent2);
-  text-decoration: none; cursor: pointer;
-  transition: color 0.15s;
-}
-.card-action:hover { color: var(--glow); }
-
-/* Actividad reciente */
-.activity-item {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0.65rem 0;
-  border-bottom: 1px solid var(--border);
-}
-.activity-item:last-child { border-bottom: none; }
-
-.activity-left { display: flex; align-items: center; gap: 0.65rem; }
-
-.activity-icon {
-  width: 30px; height: 30px; border-radius: 8px;
-  background: rgba(37,99,235,0.15);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.8rem;
-}
-
-.activity-name  { font-size: 0.8rem; font-weight: 500; }
-.activity-time  { font-size: 0.7rem; color: var(--muted); }
-.activity-amount {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.82rem; font-weight: 500; color: var(--glow);
-}
-
-/* ── Alertas ── */
-.alerts-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-}
-
-.alert-card {
-  border-radius: 12px;
-  padding: 1.1rem 1.25rem;
-  border: 1px solid;
-}
-
-.alert-card.warning { background: rgba(245,158,11,0.07); border-color: rgba(245,158,11,0.2); }
-.alert-card.danger  { background: rgba(239,68,68,0.07);  border-color: rgba(239,68,68,0.2); }
-.alert-card.info    { background: rgba(37,99,235,0.07);  border-color: rgba(37,99,235,0.2); }
-
-.alert-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; }
-.alert-icon   { font-size: 1rem; }
-.alert-title  { font-size: 0.82rem; font-weight: 600; }
-
-.alert-card.warning .alert-title { color: var(--warning); }
-.alert-card.danger  .alert-title { color: var(--danger); }
-.alert-card.info    .alert-title { color: var(--accent2); }
-
-.alert-desc { font-size: 0.75rem; color: var(--muted); line-height: 1.5; margin-bottom: 0.75rem; }
-
-.alert-link {
-  font-size: 0.75rem; font-weight: 500;
-  text-decoration: none; display: flex; align-items: center; gap: 0.3rem;
-}
-.alert-card.warning .alert-link { color: var(--warning); }
-.alert-card.danger  .alert-link { color: var(--danger); }
-.alert-card.info    .alert-link { color: var(--accent2); }
-
-/* Loading */
-.loading-overlay {
-  position: fixed; inset: 0; z-index: 999;
-  background: var(--navy);
-  display: flex; align-items: center; justify-content: center;
-  flex-direction: column; gap: 1rem;
-}
-.loading-spinner {
-  width: 40px; height: 40px;
-  border: 3px solid var(--border);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-.loading-text { font-size: 0.82rem; color: var(--muted); }
-</style>
+<script src="components.js"></script>
 </head>
-<body>
+<body data-title="Dashboard" data-subtitle="Aquí tienes un resumen de tu farmacia hoy.">
 
 <div class="loading-overlay" id="loading">
   <div class="loading-spinner"></div>
   <div class="loading-text">Cargando dashboard...</div>
 </div>
 
-<!-- SIDEBAR -->
-<aside class="sidebar">
-  <div class="sidebar-brand">
-    <div class="brand-icon">⚕</div>
-    <div class="brand-name">Pharma<span>Ges</span></div>
-  </div>
 
-  <nav class="nav">
-    <a class="nav-item active" onclick="setActive(this)" href="dashboard.html">
-      <span class="nav-icon">🏠</span> Dashboard
-    </a>
-    <a class="nav-item" onclick="setActive(this)" href="inventario.html">
-      <span class="nav-icon">📦</span> Inventario
-    </a>
-    <a class="nav-item" onclick="setActive(this)" href="ventas.html">
-      <span class="nav-icon">🛒</span> Ventas
-    </a>
-    <a class="nav-item" onclick="setActive(this)" href="reportes.html">
-      <span class="nav-icon">📊</span> Reportes
-    </a>
-    <a class="nav-item" id="nav-usuarios" onclick="setActive(this)" href="usuarios.html">
-      <span class="nav-icon">👥</span> Usuarios
-    </a>
-    <div class="nav-divider"></div>
-    <a class="nav-item" href="#">
-      <span class="nav-icon">⚙</span> Configuración
-    </a>
-  </nav>
-
-  <div class="sidebar-footer">
-    <div class="nav-divider"></div>
-    <a class="nav-item" href="#">
-      <span class="nav-icon">❓</span> Ayuda
-    </a>
-    <button class="nav-item" onclick="cerrarSesion()">
-      <span class="nav-icon">🚪</span> Cerrar sesión
-    </button>
-  </div>
-</aside>
-
-<!-- HEADER -->
-<header class="header">
-  <div class="header-left">
-    <h1 id="pageTitle">Dashboard</h1>
-    <p id="pageSubtitle">Aquí tienes un resumen de tu farmacia hoy.</p>
-  </div>
-  <div class="header-right">
-
-
-    <!-- Notificaciones -->
-    <div style="position:relative">
-      <div class="notif-btn" onclick="toggleNotif()" id="notifBtn">
-        🔔
-        <div class="notif-badge" id="notifBadge">0</div>
-      </div>
-      <div class="notif-panel" id="notifPanel">
-        <div class="notif-header">
-          <span>Notificaciones</span>
-          <span id="notifCount" style="color:var(--muted);font-weight:400">0 alertas</span>
-        </div>
-        <div class="notif-list" id="notifList">
-          <div class="notif-empty">Sin notificaciones nuevas</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="user-info">
-      <div class="user-avatar" id="userAvatar">A</div>
-      <div>
-        <div class="user-name" id="userName">Admin</div>
-        <div class="user-role" id="userRole">Administrador</div>
-      </div>
-    </div>
-  </div>
-</header>
 
 <!-- MAIN -->
-<main class="main" id="mainContent">
-  <!-- Stats -->
+<main class="main">
+
   <div class="stats-grid">
     <div class="stat-card">
-      <div class="stat-label">Ventas hoy</div>
-      <div class="stat-val blue" id="ventasHoy">$0.00</div>
-      <div class="stat-sub"><span class="up" id="diffVentas">—</span> vs ayer</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div class="stat-label">Ventas hoy</div>
+          <div class="stat-val blue" id="ventasHoy" style="margin-top:0.5rem">$0</div>
+          <div class="stat-sub" style="margin-top:0.35rem"><span class="up" id="diffVentas">—</span> vs ayer</div>
+        </div>
+        <div class="stat-icon blue"><i data-lucide="dollar-sign" style="width:20px;height:20px;color:var(--accent)"></i></div>
+      </div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">Ventas ayer</div>
-      <div class="stat-val" id="ventasAyer">$0.00</div>
-      <div class="stat-sub">Día anterior</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div class="stat-label">Ventas ayer</div>
+          <div class="stat-val" id="ventasAyer" style="margin-top:0.5rem">$0</div>
+          <div class="stat-sub" style="margin-top:0.35rem">Día anterior</div>
+        </div>
+        <div class="stat-icon" style="background:var(--bg)"><i data-lucide="bar-chart-2" style="width:20px;height:20px;color:var(--text-muted)"></i></div>
+      </div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">Stock crítico</div>
-      <div class="stat-val warning" id="stockBajo">0</div>
-      <div class="stat-sub">Productos</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div class="stat-label">Stock crítico</div>
+          <div class="stat-val warning" id="stockBajo" style="margin-top:0.5rem">0</div>
+          <div class="stat-sub" style="margin-top:0.35rem">Productos</div>
+        </div>
+        <div class="stat-icon warning"><i data-lucide="alert-triangle" style="width:20px;height:20px;color:var(--warning)"></i></div>
+      </div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">Próximos a vencer</div>
-      <div class="stat-val danger" id="proxVencer">0</div>
-      <div class="stat-sub">Productos</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div class="stat-label">Próximos a vencer</div>
+          <div class="stat-val danger" id="proxVencer" style="margin-top:0.5rem">0</div>
+          <div class="stat-sub" style="margin-top:0.35rem">Productos</div>
+        </div>
+        <div class="stat-icon danger"><i data-lucide="clock" style="width:20px;height:20px;color:var(--danger)"></i></div>
+      </div>
     </div>
   </div>
 
-  <!-- Mid row -->
-  <div class="mid-row">
+  <div style="display:grid;grid-template-columns:1fr 340px;gap:1.25rem;margin-bottom:1.5rem">
     <div class="card">
       <div class="card-header">
         <div class="card-title">Ventas diarias</div>
+        <span style="font-size:0.78rem;color:var(--text-muted)">Últimos 7 días</span>
       </div>
-      <canvas id="ventasChart" height="160"></canvas>
+      <canvas id="ventasChart" height="150"></canvas>
     </div>
-
     <div class="card">
       <div class="card-header">
         <div class="card-title">Actividad reciente</div>
         <a class="card-action" href="ventas.html">Ver todo</a>
       </div>
       <div id="actividadList">
-        <div style="color:var(--muted);font-size:0.8rem;padding:1rem 0">Sin actividad reciente</div>
+        <div style="color:var(--text-muted);font-size:0.85rem;padding:1rem 0">Sin actividad reciente</div>
       </div>
     </div>
   </div>
 
-  <!-- Alertas -->
-  <div class="alerts-row">
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem">
+    <div style="grid-column:1/-1;font-size:1rem;font-weight:600;color:var(--text);margin-bottom:-0.5rem">Alertas importantes</div>
     <div class="alert-card warning">
-      <div class="alert-header">
-        <span class="alert-icon">⚠️</span>
-        <span class="alert-title">Stock bajo</span>
-      </div>
+      <div class="alert-header"><span class="alert-icon"><i data-lucide="alert-triangle" style="width:16px;height:16px"></i></span><span class="alert-title">Stock bajo</span></div>
       <p class="alert-desc" id="alertStockDesc">Cargando...</p>
       <a class="alert-link" href="inventario.html">Ver productos →</a>
     </div>
     <div class="alert-card danger">
-      <div class="alert-header">
-        <span class="alert-icon">📅</span>
-        <span class="alert-title">Próximos a vencer</span>
-      </div>
+      <div class="alert-header"><span class="alert-icon"><i data-lucide="clock" style="width:16px;height:16px"></i></span><span class="alert-title">Próximos a vencer</span></div>
       <p class="alert-desc" id="alertVencDesc">Cargando...</p>
       <a class="alert-link" href="inventario.html">Ver productos →</a>
     </div>
     <div class="alert-card info">
-      <div class="alert-header">
-        <span class="alert-icon">📋</span>
-        <span class="alert-title">Reportes disponibles</span>
-      </div>
+      <div class="alert-header"><span class="alert-icon"><i data-lucide="file-text" style="width:16px;height:16px"></i></span><span class="alert-title">Reportes disponibles</span></div>
       <p class="alert-desc">Genera reportes de ventas e inventario para tomar decisiones estratégicas.</p>
       <a class="alert-link" href="reportes.html">Ver reportes →</a>
     </div>
   </div>
+
 </main>
 
 <script>
-const API = 'https://localhost:7092/api';
-
-// ── Auth ──
+const API     = 'https://localhost:7092/api';
 const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
 const token   = localStorage.getItem('token');
-
 if (!token) window.location.href = 'login.html';
 
-// Mostrar usuario
-document.getElementById('userName').textContent  = usuario.nombre || 'Usuario';
-document.getElementById('userRole').textContent   = usuario.rol   || '';
-document.getElementById('userAvatar').textContent = (usuario.nombre || 'U')[0].toUpperCase();
-
-// Ocultar Usuarios si no es admin
-if (usuario.rol !== 'Administrador') {
-  document.getElementById('nav-usuarios').style.display = 'none';
-}
-
-// ── Helpers ──
-function fmt(n) {
-  return '$' + Number(n).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function apiFetch(url) {
-  return fetch(API + url, {
-    headers: { 'Authorization': 'Bearer ' + token }
-  }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
-}
-
-// ── Notificaciones ──
-function toggleNotif() {
-  document.getElementById('notifPanel').classList.toggle('open');
-}
-document.addEventListener('click', e => {
-  if (!e.target.closest('#notifBtn') && !e.target.closest('#notifPanel'))
-    document.getElementById('notifPanel').classList.remove('open');
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('pageTitle').textContent  = `Hola, ${usuario.nombre || 'Admin'} 👋`;
+  document.getElementById('userName').textContent   = usuario.nombre || 'Usuario';
+  document.getElementById('userRole').textContent   = usuario.rol   || '';
+  document.getElementById('userAvatar').textContent = (usuario.nombre || 'U')[0].toUpperCase();
+  cargarDashboard();
 });
 
+function fmt(n) {
+  return '$' + Number(n).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' COP';
+}
+function apiFetch(url) {
+  return fetch(API + url, { headers: { 'Authorization': 'Bearer ' + token } })
+    .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+}
+
+function toggleNotif() { document.getElementById('notifPanel').classList.toggle('open'); }
+
 function renderNotifs(alertasStock, alertasVenc) {
-  const list  = document.getElementById('notifList');
-  const badge = document.getElementById('notifBadge');
-  const count = document.getElementById('notifCount');
   const total = alertasStock.length + alertasVenc.length;
-
-  badge.textContent = total > 9 ? '9+' : total;
-  count.textContent = `${total} alerta${total !== 1 ? 's' : ''}`;
-
-  if (total === 0) {
-    list.innerHTML = '<div class="notif-empty">Sin notificaciones nuevas ✓</div>';
-    return;
+  document.getElementById('notifBadge').textContent = total > 9 ? '9+' : total;
+  document.getElementById('notifCount').textContent = `${total} alerta${total !== 1 ? 's' : ''}`;
+  
+  if (!total) { 
+    document.getElementById('notifList').innerHTML = '<div class="notif-empty">Sin notificaciones nuevas ✓</div>'; 
+    return; 
   }
 
   let html = '';
+
   alertasStock.forEach(a => {
-    html += `<div class="notif-item">
-      <div class="notif-dot warning">⚠️</div>
-      <div><div class="notif-text"><strong>${a.nombre}</strong> — Stock bajo (${a.stock} und.)</div>
-      <div class="notif-time">Mínimo: ${a.stockMinimo} und.</div></div>
-    </div>`;
+    const stockColor = a.stock === 0 ? 'var(--danger)' : 'var(--warning)';
+    const stockText  = a.stock === 0 ? 'SIN STOCK' : `Stock bajo (${a.stock} und.)`;
+
+    html += `
+      <div class="notif-item">
+        <div class="notif-dot warning"><i data-lucide="alert-triangle" style="width:14px;height:14px;color:${stockColor}"></i></div>
+        <div>
+          <div class="notif-text"><strong>${a.nombre}</strong> — <span style="color:${stockColor}; font-weight:bold;">${stockText}</span></div>
+          <div class="notif-time">Mínimo: ${a.stockMinimo} und.</div>
+        </div>
+      </div>`;
   });
+
   alertasVenc.forEach(a => {
-    html += `<div class="notif-item">
-      <div class="notif-dot danger">📅</div>
-      <div><div class="notif-text"><strong>${a.nombre}</strong> — Vence en ${a.diasParaVencer} día(s)</div>
-      <div class="notif-time">Fecha: ${a.fechaCaducidad}</div></div>
-    </div>`;
+    let vencimientoTexto = '';
+    const dias = a.diasParaVencer;
+
+    if (dias < 0) {
+      vencimientoTexto = `<span style="color:var(--danger); font-weight:bold;">Venció hace ${Math.abs(dias)} día(s)</span>`;
+    } else if (dias === 0) {
+      vencimientoTexto = `<span style="color:var(--danger); font-weight:bold;">Vence HOY</span>`;
+    } else {
+      vencimientoTexto = `Vence en ${dias} día(s)`;
+    }
+
+    html += `
+      <div class="notif-item">
+        <div class="notif-dot danger"><i data-lucide="clock" style="width:14px;height:14px;color:var(--danger)"></i></div>
+        <div>
+          <div class="notif-text"><strong>${a.nombre}</strong> — ${vencimientoTexto}</div>
+          <div class="notif-time">Fecha: ${a.fechaCaducidad}</div>
+        </div>
+      </div>`;
   });
-  list.innerHTML = html;
+
+  document.getElementById('notifList').innerHTML = html;
+  lucide.createIcons();
 }
 
-// ── Dashboard ──
 async function cargarDashboard() {
   try {
     const data = await apiFetch('/Dashboard');
-
-    // Stats
+    
     document.getElementById('ventasHoy').textContent  = fmt(data.ventasHoy);
     document.getElementById('ventasAyer').textContent = fmt(data.ventasAyer);
-    document.getElementById('stockBajo').textContent  = data.productostockBajo ?? data.productosBajoStock ?? 0;
-    document.getElementById('proxVencer').textContent = data.productosProximosAVencer ?? 0;
+    
+    const nb = data.productostockBajo ?? data.productosBajoStock ?? 0;
+    const nv = data.productosProximosAVencer ?? 0;
+    document.getElementById('stockBajo').textContent  = nb;
+    document.getElementById('proxVencer').textContent = nv;
 
-    // Diff ventas
     if (data.ventasAyer > 0) {
       const diff = ((data.ventasHoy - data.ventasAyer) / data.ventasAyer * 100).toFixed(1);
-      const el   = document.getElementById('diffVentas');
+      const el = document.getElementById('diffVentas');
       el.textContent = (diff >= 0 ? '▲ ' : '▼ ') + Math.abs(diff) + '%';
       el.className   = diff >= 0 ? 'up' : 'down';
     }
 
-    // Alertas cards
-    const nb = data.productostockBajo ?? data.productosBajoStock ?? 0;
-    const nv = data.productosProximosAVencer ?? 0;
-    document.getElementById('alertStockDesc').textContent =
-      nb > 0 ? `${nb} producto${nb>1?'s':''} están por debajo del nivel mínimo de stock.` : 'Sin alertas de stock.';
-    document.getElementById('alertVencDesc').textContent =
-      nv > 0 ? `${nv} producto${nv>1?'s':''} vencen pronto.` : 'Sin productos próximos a vencer.';
+    document.getElementById('alertStockDesc').textContent = nb > 0 ? `${nb} producto${nb>1?'s':''} con stock bajo.` : 'Sin alertas de stock.';
+    document.getElementById('alertVencDesc').textContent  = nv > 0 ? `${nv} producto${nv>1?'s':''} vencen pronto.` : 'Sin productos por vencer.';
 
-    // Notificaciones
     renderNotifs(data.alertasStock || [], data.alertasVencimiento || []);
 
-    // Actividad reciente
     const ventas = data.ventasRecientes || [];
     const actEl  = document.getElementById('actividadList');
-    if (ventas.length === 0) {
-      actEl.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;padding:1rem 0">Sin actividad reciente</div>';
-    } else {
-      actEl.innerHTML = ventas.map(v => `
-        <div class="activity-item">
-          <div class="activity-left">
-            <div class="activity-icon">🛒</div>
+    actEl.innerHTML = ventas.length === 0
+      ? '<div style="color:var(--text-muted);font-size:0.85rem;padding:1rem 0">Sin actividad reciente</div>'
+      : ventas.map(v => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:0.65rem 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:0.75rem">
+            <div style="width:32px;height:32px;border-radius:8px;background:var(--info-bg);display:flex;align-items:center;justify-content:center">
+              <i data-lucide="shopping-cart" style="width:15px;height:15px;color:var(--accent)"></i>
+            </div>
             <div>
-              <div class="activity-name">${v.numeroCorrelativo}</div>
-              <div class="activity-time">${new Date(v.creadoEn).toLocaleString('es-CO')}</div>
+              <div style="font-size:0.85rem;font-weight:500">${v.numeroCorrelativo}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted)">${new Date(v.creadoEn).toLocaleString('es-CO')}</div>
             </div>
           </div>
-          <div class="activity-amount">${fmt(v.total)}</div>
+          <div style="font-size:0.85rem;font-weight:600;color:var(--accent)">${fmt(v.total)}</div>
         </div>`).join('');
-    }
 
-    // Gráfica (últimos 7 días simulados — reemplazar con endpoint real si se agrega)
-    const labels = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
-    const valores = [0,0,0,0,0,0,data.ventasHoy];
+
+    const rg = await apiFetch('/Dashboard/ventas-por-dia?dias=7');
+
+    const chartLabels = rg.map(g => g.label.charAt(0).toUpperCase() + g.label.slice(1));
+    const chartVals   = rg.map(g => g.total);
 
     new Chart(document.getElementById('ventasChart'), {
       type: 'line',
       data: {
-        labels,
-        datasets: [{
-          data: valores,
-          borderColor: '#3b82f6',
-          backgroundColor: 'rgba(59,130,246,0.08)',
-          borderWidth: 2,
-          fill: true,
-          tension: 0.4,
-          pointBackgroundColor: '#3b82f6',
-          pointRadius: 4,
+        labels: chartLabels,
+        datasets: [{ 
+          data: chartVals, 
+          borderColor: '#0EA5E9', 
+          backgroundColor: 'rgba(14,165,233,0.07)', 
+          borderWidth: 2, 
+          fill: true, 
+          tension: 0.4, 
+          pointBackgroundColor: '#0EA5E9', 
+          pointRadius: 4 
         }]
       },
       options: {
         responsive: true,
         plugins: { legend: { display: false } },
         scales: {
-          x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#94a3b8', font: { size: 11 } } },
-          y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#94a3b8', font: { size: 11 }, callback: v => '$'+v } }
+          x: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { color: '#94a3b8', font: { size: 12 } } },
+          y: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { color: '#94a3b8', font: { size: 12 }, callback: v => Number(v).toLocaleString('es-CO') } }
         }
       }
     });
@@ -650,21 +257,11 @@ async function cargarDashboard() {
     console.error('Error cargando dashboard:', err);
   } finally {
     document.getElementById('loading').style.display = 'none';
+    lucide.createIcons();
   }
 }
 
-function setActive(el) {
-  document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-  el.classList.add('active');
-}
-
-function cerrarSesion() {
-  localStorage.removeItem('token');
-  localStorage.removeItem('usuario');
-  window.location.href = 'login.html';
-}
-
-cargarDashboard();
+function cerrarSesion() { localStorage.removeItem('token'); localStorage.removeItem('usuario'); window.location.href = 'login.html'; }
 </script>
 </body>
 </html>

@@ -13,7 +13,7 @@ namespace PharmaGes.API.DTOs
         public decimal PrecioVenta { get; set; }
         public DateOnly? FechaCaducidad { get; set; }
         public int AlertaVencimientoDias { get; set; }
-        public string EstadoStock { get; set; } = string.Empty; // ok, bajo, agotado
+        public string EstadoStock { get; set; } = string.Empty;
     }
 
     public class CrearMedicamentoDto
@@ -40,5 +40,13 @@ namespace PharmaGes.API.DTOs
         public decimal PrecioVenta { get; set; }
         public DateOnly? FechaCaducidad { get; set; }
         public int AlertaVencimientoDias { get; set; }
+    }
+
+    public class AjustarStockDto
+    {
+        /// <summary>entrada = sumar, baja = restar, ajuste = fijar valor absoluto</summary>
+        public string Tipo { get; set; } = "entrada";
+        public int Cantidad { get; set; }
+        public string? Motivo { get; set; }
     }
 }
