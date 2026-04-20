@@ -37,6 +37,7 @@ namespace PharmaGes.API.Data
                 e.Property(u => u.Id).HasColumnName("id");
                 e.Property(u => u.RolId).HasColumnName("rol_id");
                 e.Property(u => u.Nombre).HasColumnName("nombre").HasMaxLength(100).IsRequired();
+                e.Property(u => u.Apellido).HasColumnName("apellido").HasMaxLength(100).IsRequired();
                 e.Property(u => u.Email).HasColumnName("email").HasMaxLength(150).IsRequired();
                 e.Property(u => u.ContrasenaHash).HasColumnName("contrasena_hash").HasMaxLength(255).IsRequired();
                 e.Property(u => u.FotoUrl).HasColumnName("foto_url").HasMaxLength(500);

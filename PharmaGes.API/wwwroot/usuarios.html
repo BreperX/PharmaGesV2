@@ -7,6 +7,30 @@
 <link rel="stylesheet" href="styles.css">
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <script src="components.js"></script>
+<style>
+.user-avatar-panel {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: var(--accent); display: flex; align-items: center;
+  justify-content: center; font-size: 1.5rem; font-weight: 700;
+  color: #fff; margin: 0 auto 0.5rem; flex-shrink: 0;
+}
+.rol-badge { display: inline-flex; align-items: center; padding: 0.22rem 0.7rem; border-radius: 100px; font-size: 0.72rem; font-weight: 600; }
+.rol-badge.admin    { background: var(--accent-light); color: var(--accent); }
+.rol-badge.gerente  { background: var(--warning-bg);   color: var(--warning); }
+.rol-badge.empleado { background: var(--success-bg);   color: var(--success); }
+.pass-section { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 1rem; background: var(--bg); display: flex; flex-direction: column; gap: 0.75rem; }
+.pass-wrap { position: relative; }
+.pass-wrap .form-input { padding-right: 2.5rem; }
+.pass-toggle-btn { position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-light); display: flex; align-items: center; transition: color 0.15s; }
+.pass-toggle-btn:hover { color: var(--accent); }
+.strength-bar { display: flex; gap: 3px; margin-top: 4px; }
+.strength-bar span { flex: 1; height: 3px; border-radius: 2px; background: var(--border); transition: background 0.3s; }
+.strength-bar.weak   span:nth-child(1)                                         { background: var(--danger); }
+.strength-bar.medium span:nth-child(1), .strength-bar.medium span:nth-child(2) { background: var(--warning); }
+.strength-bar.strong span:nth-child(1), .strength-bar.strong span:nth-child(2), .strength-bar.strong span:nth-child(3) { background: var(--success); }
+.strength-label { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
+.modal-pass { max-width: 420px; }
+</style>
 </head>
 <body class="usuarios" data-title="Usuarios" data-subtitle="Gestiona los usuarios y roles del sistema">
 
@@ -22,14 +46,11 @@
   </div>
 
   <div class="table-wrap">
-    <div class="table-header">
-      <div>USUARIO</div><div>CORREO</div><div>ROL</div><div>ESTADO</div><div>ACCIONES</div>
+    <div class="table-header" style="grid-template-columns:2fr 2fr 1fr 1fr 1fr 100px">
+      <div>USUARIO</div><div>CORREO</div><div>ROL</div><div>ESTADO</div><div>REGISTRO</div><div>ACCIONES</div>
     </div>
     <div id="tableBody"><div class="empty-state">Cargando usuarios...</div></div>
-    <div class="table-footer">
-      <span id="footerText"></span>
-      <div class="pagination" id="pagination"></div>
-    </div>
+    <div class="table-footer"><span id="footerText"></span></div>
   </div>
 </main>
 
@@ -38,30 +59,80 @@
   <div class="panel-header">
     <div>
       <div class="panel-title" id="panelTitle">Nuevo usuario</div>
-      <div class="panel-sub" id="panelSub">Completa la información del usuario</div>
+      <div class="panel-sub" id="panelSub">Completa la información</div>
     </div>
     <button class="panel-close" onclick="cerrarPanel()"><i data-lucide="x"></i></button>
   </div>
   <div class="panel-body">
-    <div>
-      <div class="form-section-title">Información personal</div>
-      <div class="form-row" style="margin-bottom:0.85rem">
-        <div class="form-group"><label class="form-label">Nombre</label><input class="form-input" id="fNombre" placeholder="Nombre completo"></div>
-        <div class="form-group"><label class="form-label">Apellido</label><input class="form-input" id="fApellido" placeholder="Apellido"></div>
-      </div>
-      <div class="form-group"><label class="form-label">Correo electrónico</label><input class="form-input" id="fEmail" type="email" placeholder="usuario@correo.com"></div>
+    <div style="text-align:center">
+      <div class="user-avatar-panel" id="avatarPreview">U</div>
     </div>
     <div>
-      <div class="form-section-title">Acceso</div>
+      <div class="form-section-title">Información personal</div>
+      <div class="form-row" style="margin-bottom:0.75rem">
+        <div class="form-group">
+          <label class="form-label">Nombre</label>
+          <input class="form-input" id="fNombre" placeholder="Nombre" oninput="actualizarAvatar()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Apellido</label>
+          <input class="form-input" id="fApellido" placeholder="Apellido">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Correo electrónico</label>
+        <input class="form-input" id="fEmail" type="email" placeholder="usuario@correo.com">
+      </div>
+    </div>
+    <div>
+      <div class="form-section-title">Rol y acceso</div>
       <div class="form-group">
         <label class="form-label">Rol</label>
         <select class="form-input" id="fRol">
-          <option value="Administrador">Administrador</option>
-          <option value="Vendedor">Vendedor</option>
-          <option value="Gerente">Gerente</option>
+          <option value="1">Administrador — acceso total</option>
+          <option value="2">Gerente — sin gestión de usuarios</option>
+          <option value="3" selected>Empleado — solo ventas e inventario</option>
         </select>
       </div>
-      <div class="form-group" id="passGroup"><label class="form-label">Contraseña</label><input class="form-input" id="fPassword" type="password" placeholder="••••••••"></div>
+      <div class="form-group" id="estadoGroup" style="display:none">
+        <label class="form-label">Estado de la cuenta</label>
+        <select class="form-input" id="fEstado">
+          <option value="true">Activo</option>
+          <option value="false">Inactivo</option>
+        </select>
+      </div>
+    </div>
+    <!-- Contraseña nueva -->
+    <div id="passNuevoGroup">
+      <div class="form-section-title">Contraseña inicial</div>
+      <div class="pass-section">
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Contraseña</label>
+          <div class="pass-wrap">
+            <input class="form-input" id="fPassword" type="password" placeholder="Mínimo 8 caracteres" oninput="evaluarFortaleza('fPassword','strengthBar','strengthLabel')">
+            <button type="button" class="pass-toggle-btn" onclick="togglePass('fPassword',this)"><i data-lucide="eye" style="width:15px;height:15px"></i></button>
+          </div>
+          <div class="strength-bar" id="strengthBar"><span></span><span></span><span></span></div>
+          <div class="strength-label" id="strengthLabel"></div>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Confirmar contraseña</label>
+          <div class="pass-wrap">
+            <input class="form-input" id="fPassword2" type="password" placeholder="Repite la contraseña">
+            <button type="button" class="pass-toggle-btn" onclick="togglePass('fPassword2',this)"><i data-lucide="eye" style="width:15px;height:15px"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Edición: solo botón cambiar contraseña -->
+    <div id="passEditGroup" style="display:none">
+      <div class="form-section-title">Contraseña</div>
+      <div class="pass-section">
+        <div style="font-size:0.8rem;color:var(--text-muted);line-height:1.5">La contraseña se cambia de forma segura desde el botón de abajo.</div>
+        <button class="btn btn-outline" style="width:100%" onclick="abrirModalPass()">
+          <i data-lucide="key" style="width:14px;height:14px"></i> Cambiar contraseña
+        </button>
+      </div>
     </div>
   </div>
   <div class="panel-footer">
@@ -73,12 +144,44 @@
 <!-- MODAL ELIMINAR -->
 <div class="modal-overlay" id="modalEliminar">
   <div class="modal">
-    <div class="modal-icon"><i data-lucide="user-x" style="width:32px;height:32px;color:var(--danger)"></i></div>
-    <div class="modal-title">Confirmar eliminación</div>
+    <div class="modal-icon"><i data-lucide="user-x" style="width:36px;height:36px;color:var(--danger)"></i></div>
+    <div class="modal-title">Eliminar usuario</div>
     <div class="modal-desc" id="modalDesc">¿Estás seguro que deseas eliminar este usuario?</div>
+    <div style="background:var(--danger-bg);border:1px solid #FCA5A5;border-radius:var(--radius-sm);padding:0.65rem;font-size:0.78rem;color:#B91C1C;margin-bottom:1.25rem">
+      ⚠ El usuario perderá acceso inmediatamente.
+    </div>
     <div class="modal-actions">
-      <button class="btn btn-outline" onclick="cerrarModal()">Cancelar</button>
-      <button class="btn btn-danger" onclick="confirmarEliminar()">Eliminar</button>
+      <button class="btn btn-outline" onclick="cerrarModal('modalEliminar')">Cancelar</button>
+      <button class="btn btn-danger" onclick="confirmarEliminar()">Sí, eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CAMBIAR CONTRASEÑA -->
+<div class="modal-overlay" id="modalPass">
+  <div class="modal modal-pass">
+    <div class="modal-icon"><i data-lucide="key" style="width:32px;height:32px;color:var(--accent)"></i></div>
+    <div class="modal-title">Cambiar contraseña</div>
+    <div class="modal-desc" id="modalPassDesc">Introduce la nueva contraseña.</div>
+    <div class="form-group">
+      <label class="form-label">Nueva contraseña</label>
+      <div class="pass-wrap">
+        <input class="form-input" id="mPass1" type="password" placeholder="Mínimo 8 caracteres" oninput="evaluarFortaleza('mPass1','mStrengthBar','mStrengthLabel')">
+        <button type="button" class="pass-toggle-btn" onclick="togglePass('mPass1',this)"><i data-lucide="eye" style="width:15px;height:15px"></i></button>
+      </div>
+      <div class="strength-bar" id="mStrengthBar"><span></span><span></span><span></span></div>
+      <div class="strength-label" id="mStrengthLabel"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Confirmar nueva contraseña</label>
+      <div class="pass-wrap">
+        <input class="form-input" id="mPass2" type="password" placeholder="Repite la contraseña">
+        <button type="button" class="pass-toggle-btn" onclick="togglePass('mPass2',this)"><i data-lucide="eye" style="width:15px;height:15px"></i></button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="cerrarModal('modalPass')">Cancelar</button>
+      <button class="btn btn-primary" id="btnCambiarPass" onclick="cambiarPassword()">Guardar contraseña</button>
     </div>
   </div>
 </div>
@@ -102,62 +205,23 @@ function renderNotifs(alertasStock, alertasVenc) {
   const total = alertasStock.length + alertasVenc.length;
   document.getElementById('notifBadge').textContent = total > 9 ? '9+' : total;
   document.getElementById('notifCount').textContent = `${total} alerta${total !== 1 ? 's' : ''}`;
-  
-  if (!total) { 
-    document.getElementById('notifList').innerHTML = '<div class="notif-empty">Sin notificaciones nuevas ✓</div>'; 
-    return; 
-  }
-
+  if (!total) { document.getElementById('notifList').innerHTML = '<div class="notif-empty">Sin notificaciones nuevas ✓</div>'; return; }
   let html = '';
-
   alertasStock.forEach(a => {
-    const stockColor = a.stock === 0 ? 'var(--danger)' : 'var(--warning)';
-    const stockText  = a.stock === 0 ? 'SIN STOCK' : `Stock bajo (${a.stock} und.)`;
-
-    html += `
-      <div class="notif-item">
-        <div class="notif-dot warning"><i data-lucide="alert-triangle" style="width:14px;height:14px;color:${stockColor}"></i></div>
-        <div>
-          <div class="notif-text"><strong>${a.nombre}</strong> — <span style="color:${stockColor}; font-weight:bold;">${stockText}</span></div>
-          <div class="notif-time">Mínimo: ${a.stockMinimo} und.</div>
-        </div>
-      </div>`;
+    const c = a.stock === 0 ? 'var(--danger)' : 'var(--warning)';
+    html += `<div class="notif-item"><div class="notif-dot warning"><i data-lucide="alert-triangle" style="width:14px;height:14px;color:${c}"></i></div><div><div class="notif-text"><strong>${a.nombre}</strong> — <span style="color:${c};font-weight:bold">${a.stock === 0 ? 'SIN STOCK' : `Stock bajo (${a.stock} und.)`}</span></div><div class="notif-time">Mínimo: ${a.stockMinimo} und.</div></div></div>`;
   });
-
   alertasVenc.forEach(a => {
-    let vencimientoTexto = '';
     const dias = a.diasParaVencer;
-
-    if (dias < 0) {
-      vencimientoTexto = `<span style="color:var(--danger); font-weight:bold;">Venció hace ${Math.abs(dias)} día(s)</span>`;
-    } else if (dias === 0) {
-      vencimientoTexto = `<span style="color:var(--danger); font-weight:bold;">Vence HOY</span>`;
-    } else {
-      vencimientoTexto = `Vence en ${dias} día(s)`;
-    }
-
-    html += `
-      <div class="notif-item">
-        <div class="notif-dot danger"><i data-lucide="clock" style="width:14px;height:14px;color:var(--danger)"></i></div>
-        <div>
-          <div class="notif-text"><strong>${a.nombre}</strong> — ${vencimientoTexto}</div>
-          <div class="notif-time">Fecha: ${a.fechaCaducidad}</div>
-        </div>
-      </div>`;
+    const vt = dias < 0 ? `<span style="color:var(--danger);font-weight:bold">Venció hace ${Math.abs(dias)} día(s)</span>` : dias === 0 ? `<span style="color:var(--danger);font-weight:bold">Vence HOY</span>` : `Vence en ${dias} día(s)`;
+    html += `<div class="notif-item"><div class="notif-dot danger"><i data-lucide="clock" style="width:14px;height:14px;color:var(--danger)"></i></div><div><div class="notif-text"><strong>${a.nombre}</strong> — ${vt}</div><div class="notif-time">Fecha: ${a.fechaCaducidad}</div></div></div>`;
   });
-
   document.getElementById('notifList').innerHTML = html;
   lucide.createIcons();
 }
 
 async function cargarNotifs() {
-  try {
-    const r = await apiFetch('/Dashboard');
-    const data = await r.json();
-    renderNotifs(data.alertasStock || [], data.alertasVencimiento || []);
-  } catch (err) {
-    console.error('Error al cargar notificaciones:', err);
-  }
+  try { const r = await apiFetch('/Dashboard'); const d = await r.json(); renderNotifs(d.alertasStock||[], d.alertasVencimiento||[]); } catch {}
 }
 
 async function cargar() {
@@ -170,58 +234,85 @@ async function cargar() {
 
 function listaFiltrada() {
   const q = document.getElementById('searchInput').value.toLowerCase();
-  return q ? usuarios.filter(u => u.nombre?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q)) : usuarios;
+  // Corregido: Ahora busca en nombre o apellido
+  return q ? usuarios.filter(u => 
+    u.nombre?.toLowerCase().includes(q) || 
+    u.apellido?.toLowerCase().includes(q) || 
+    u.email?.toLowerCase().includes(q)
+  ) : usuarios;
 }
 
 function filtrar() { renderTabla(listaFiltrada()); }
+
+function rolInfo(rol) {
+  if (rol === 'Administrador') return { cls: 'admin',    label: 'Administrador' };
+  if (rol === 'Gerente')       return { cls: 'gerente',  label: 'Gerente' };
+  return                               { cls: 'empleado', label: 'Empleado' };
+}
 
 function renderTabla(lista) {
   document.getElementById('footerText').textContent = `${lista.length} usuario${lista.length !== 1 ? 's' : ''}`;
   const body = document.getElementById('tableBody');
   if (!lista.length) { body.innerHTML = '<div class="empty-state">No se encontraron usuarios</div>'; return; }
+  const yoId = usuario.id;
   body.innerHTML = lista.map(u => {
-    const inicial = (u.nombre || 'U')[0].toUpperCase();
-    const rolColor = u.rol === 'Administrador' ? 'var(--accent)' : u.rol === 'Gerente' ? 'var(--warning)' : 'var(--success)';
-    const rolBg    = u.rol === 'Administrador' ? 'var(--accent-light)' : u.rol === 'Gerente' ? 'var(--warning-bg)' : 'var(--success-bg)';
-    return `<div class="table-row">
+    const ri     = rolInfo(u.rol);
+    const activo = u.esActivo !== false;
+    const fecha  = u.creadoEn ? new Date(u.creadoEn).toLocaleDateString('es-CO') : '—';
+    const esMismo = u.id === yoId;
+    return `
+    <div class="table-row" style="grid-template-columns:2fr 2fr 1fr 1fr 1fr 100px">
       <div style="display:flex;align-items:center;gap:0.75rem">
-        <div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:700;color:#fff;flex-shrink:0">${inicial}</div>
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:700;color:#fff;flex-shrink:0">${(u.nombre||'U')[0].toUpperCase()}</div>
         <div>
-          <div style="font-size:0.875rem;font-weight:500">${u.nombre || '—'}</div>
-          <div style="font-size:0.75rem;color:var(--text-muted)">${u.apellido || ''}</div>
+          <div style="font-size:0.875rem;font-weight:500">${u.nombre||'—'} ${u.apellido||''} ${esMismo ? '<span style="font-size:0.68rem;color:var(--accent);font-weight:600">(tú)</span>' : ''}</div>
         </div>
       </div>
-      <div style="font-size:0.875rem;color:var(--text-muted)">${u.email || '—'}</div>
-      <div><span style="padding:0.22rem 0.7rem;border-radius:100px;font-size:0.72rem;font-weight:600;background:${rolBg};color:${rolColor}">${u.rol || '—'}</span></div>
-      <div><span class="badge ok">Activo</span></div>
+      <div style="font-size:0.875rem;color:var(--text-muted)">${u.email||'—'}</div>
+      <div><span class="rol-badge ${ri.cls}">${ri.label}</span></div>
+      <div><span class="badge ${activo ? 'ok' : 'danger'}">${activo ? 'Activo' : 'Inactivo'}</span></div>
+      <div style="font-size:0.8rem;color:var(--text-muted)">${fecha}</div>
       <div style="display:flex;gap:0.4rem">
         <button class="icon-btn edit" onclick="abrirPanel(${u.id})" title="Editar"><i data-lucide="pencil" style="width:14px;height:14px"></i></button>
-        <button class="icon-btn delete" onclick="pedirEliminar(${u.id},'${u.nombre}')" title="Eliminar"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>
+        <button class="icon-btn delete" onclick="pedirEliminar(${u.id},'${(u.nombre||'').replace(/'/g,"\\'")}',${esMismo})" title="Eliminar" ${esMismo ? 'disabled style="opacity:0.3;pointer-events:none"' : ''}><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>
       </div>
     </div>`;
   }).join('');
   lucide.createIcons();
 }
 
+function actualizarAvatar() {
+  const n = document.getElementById('fNombre').value.trim();
+  document.getElementById('avatarPreview').textContent = n ? n[0].toUpperCase() : 'U';
+}
+
 function abrirPanel(id) {
   editandoId = id;
   const isEdit = id !== null;
-  document.getElementById('panelTitle').textContent = isEdit ? 'Editar usuario' : 'Nuevo usuario';
-  document.getElementById('panelSub').textContent   = isEdit ? 'Modifica la información' : 'Completa la información';
-  document.getElementById('btnGuardar').textContent = isEdit ? 'Guardar cambios' : 'Crear usuario';
-  document.getElementById('passGroup').style.display = isEdit ? 'none' : 'flex';
-  ['fNombre','fApellido','fEmail','fPassword'].forEach(i => document.getElementById(i).value = '');
+  document.getElementById('panelTitle').textContent  = isEdit ? 'Editar usuario'  : 'Nuevo usuario';
+  document.getElementById('panelSub').textContent    = isEdit ? 'Modifica la información del usuario' : 'Completa la información del usuario';
+  document.getElementById('btnGuardar').textContent  = isEdit ? 'Guardar cambios' : 'Crear usuario';
+  document.getElementById('passNuevoGroup').style.display = isEdit ? 'none'  : 'block';
+  document.getElementById('passEditGroup').style.display  = isEdit ? 'block' : 'none';
+  document.getElementById('estadoGroup').style.display    = isEdit ? 'block' : 'none';
+  ['fNombre','fApellido','fEmail','fPassword','fPassword2'].forEach(i => { const el = document.getElementById(i); if(el) el.value = ''; });
+  document.getElementById('avatarPreview').textContent = 'U';
+  resetStrength('strengthBar','strengthLabel');
   if (isEdit) {
     const u = usuarios.find(x => x.id === id);
     if (u) {
-      document.getElementById('fNombre').value   = u.nombre || '';
-      document.getElementById('fApellido').value = u.apellido || '';
-      document.getElementById('fEmail').value    = u.email || '';
-      document.getElementById('fRol').value      = u.rol || 'Vendedor';
+      document.getElementById('fNombre').value   = u.nombre   || '';
+      document.getElementById('fApellido').value = u.apellido || ''; // Corregido: Carga el apellido
+      document.getElementById('fEmail').value    = u.email    || '';
+      document.getElementById('fEstado').value   = String(u.esActivo !== false);
+      const rolMap = { 'Administrador':'1', 'Gerente':'2', 'Empleado':'3' };
+      document.getElementById('fRol').value = rolMap[u.rol] || '3';
+      actualizarAvatar();
     }
   }
   document.getElementById('sidePanel').classList.add('open');
   document.getElementById('main').classList.add('panel-open');
+  lucide.createIcons();
 }
 
 function cerrarPanel() {
@@ -231,53 +322,173 @@ function cerrarPanel() {
 }
 
 async function guardar() {
+  const nombre   = document.getElementById('fNombre').value.trim();
+  const apellido = document.getElementById('fApellido').value.trim();
+  const email    = document.getElementById('fEmail').value.trim();
+  const rolId    = parseInt(document.getElementById('fRol').value);
+  const esActivo = document.getElementById('fEstado').value === 'true';
+  
+  if (!nombre || !apellido || !email) { 
+    showToast('Nombre, apellido y correo son obligatorios', 'error'); 
+    return; 
+  }
+
+  if (!editandoId) {
+    const p1 = document.getElementById('fPassword').value;
+    const p2 = document.getElementById('fPassword2').value;
+    if (p1.length < 8) { showToast('Contraseña mínimo 8 caracteres', 'error'); return; }
+    if (p1 !== p2)     { showToast('Las contraseñas no coinciden', 'error'); return; }
+  }
+
   const btn = document.getElementById('btnGuardar');
   btn.innerHTML = '<span class="spinner-sm"></span>'; btn.disabled = true;
-  const body = {
-    nombre: document.getElementById('fNombre').value,
-    apellido: document.getElementById('fApellido').value,
-    email: document.getElementById('fEmail').value,
-    rol: document.getElementById('fRol').value,
+
+  // Corregido: Se envían nombre y apellido por separado
+  const body = { 
+    nombre, 
+    apellido, 
+    email, 
+    rolId, 
+    esActivo 
   };
-  if (!editandoId) body.contrasena = document.getElementById('fPassword').value;
+
+  if (!editandoId) {
+    body.contrasena = document.getElementById('fPassword').value;
+  }
+
   try {
-    const r = await apiFetch(editandoId ? `/Usuarios/${editandoId}` : '/Usuarios', { method: editandoId ? 'PUT' : 'POST', body: JSON.stringify(body) });
+    const r = await apiFetch(editandoId ? `/Usuarios/${editandoId}` : '/Usuarios', { 
+      method: editandoId ? 'PUT' : 'POST', 
+      body: JSON.stringify(body) 
+    });
     const d = await r.json();
     if (r.ok) { showToast(d.mensaje || 'Guardado correctamente', 'success'); cerrarPanel(); cargar(); }
-    else       { showToast(d.mensaje || 'Error al guardar', 'error'); }
+    else       showToast(d.mensaje || 'Error al guardar', 'error');
   } catch { showToast('Error de conexión', 'error'); }
   finally { btn.textContent = editandoId ? 'Guardar cambios' : 'Crear usuario'; btn.disabled = false; }
 }
 
-function pedirEliminar(id, nombre) {
+function pedirEliminar(id, nombre, esMismo) {
+  if (esMismo) { showToast('No puedes eliminar tu propia cuenta', 'error'); return; }
   eliminandoId = id;
-  document.getElementById('modalDesc').textContent = `¿Estás seguro que deseas eliminar a "${nombre}"?`;
+  document.getElementById('modalDesc').textContent = `¿Eliminar a "${nombre}"?`;
   document.getElementById('modalEliminar').classList.add('open');
   lucide.createIcons();
 }
-function cerrarModal() { document.getElementById('modalEliminar').classList.remove('open'); eliminandoId = null; }
+
 async function confirmarEliminar() {
   if (!eliminandoId) return;
+
+  // NUEVA VALIDACIÓN DE SEGURIDAD
+  if (eliminandoId === usuario.id) {
+    showToast('Error crítico: No puedes eliminar tu propia cuenta desde el sistema.', 'error');
+    cerrarModal('modalEliminar');
+    return;
+  }
+
   try {
     const r = await apiFetch(`/Usuarios/${eliminandoId}`, { method: 'DELETE' });
     const d = await r.json();
-    if (r.ok) { showToast(d.mensaje, 'success'); cargar(); }
-    else       { showToast(d.mensaje || 'Error', 'error'); }
-  } catch { showToast('Error de conexión', 'error'); }
-  cerrarModal();
+    if (r.ok) { 
+      showToast(d.mensaje, 'success'); 
+      cargar(); 
+    }
+    else showToast(d.mensaje || 'Error', 'error');
+  } catch { 
+    showToast('Error de conexión', 'error'); 
+  }
+  cerrarModal('modalEliminar');
 }
+
+function abrirModalPass() {
+  ['mPass1','mPass2'].forEach(i => document.getElementById(i).value = '');
+  resetStrength('mStrengthBar','mStrengthLabel');
+  const u = usuarios.find(x => x.id === editandoId);
+  document.getElementById('modalPassDesc').textContent = `Nueva contraseña para ${u?.nombre || 'el usuario'}.`;
+  document.getElementById('modalPass').classList.add('open');
+  lucide.createIcons();
+}
+
+async function cambiarPassword() {
+  const p1 = document.getElementById('mPass1').value;
+  const p2 = document.getElementById('mPass2').value;
+  if (p1.length < 8) { showToast('Mínimo 8 caracteres', 'error'); return; }
+  if (p1 !== p2)     { showToast('Las contraseñas no coinciden', 'error'); return; }
+  
+  const u = usuarios.find(x => x.id === editandoId);
+  if (!u) return;
+
+  const btn = document.getElementById('btnCambiarPass');
+  btn.innerHTML = '<span class="spinner-sm"></span>'; btn.disabled = true;
+
+  // Corregido: Se mapean los datos incluyendo el apellido para la actualización
+  const body = {
+    nombre: u.nombre,
+    apellido: u.apellido,
+    email: u.email,
+    contrasena: p1,
+    rolId: u.rol === 'Administrador' ? 1 : u.rol === 'Gerente' ? 2 : 3,
+    esActivo: u.esActivo !== false,
+    fotoUrl: u.fotoUrl || null
+  };
+
+  try {
+    const r = await apiFetch(`/Usuarios/${editandoId}`, { 
+      method: 'PUT', 
+      body: JSON.stringify(body) 
+    });
+    if (r.ok) { 
+      showToast('Contraseña actualizada con éxito', 'success'); 
+      cerrarModal('modalPass'); 
+      cargar(); 
+    } else {
+      const d = await r.json();
+      showToast(d.mensaje || 'Error al cambiar contraseña', 'error');
+    }
+  } catch (err) {
+    console.error(err);
+    showToast('Error de red o servidor', 'error');
+  } finally {
+    btn.textContent = 'Guardar contraseña'; 
+    btn.disabled = false;
+  }
+}
+
+function cerrarModal(id) { document.getElementById(id).classList.remove('open'); if (id === 'modalEliminar') eliminandoId = null; }
+
+function togglePass(inputId, btn) {
+  const input = document.getElementById(inputId);
+  const icon  = btn.querySelector('i');
+  input.type  = input.type === 'password' ? 'text' : 'password';
+  icon.setAttribute('data-lucide', input.type === 'password' ? 'eye' : 'eye-off');
+  lucide.createIcons();
+}
+
+function evaluarFortaleza(inputId, barId, labelId) {
+  const val = document.getElementById(inputId).value;
+  let score = 0;
+  if (val.length >= 8)           score++;
+  if (/[A-Z]/.test(val))         score++;
+  if (/[0-9]/.test(val))         score++;
+  if (/[^A-Za-z0-9]/.test(val)) score++;
+  document.getElementById(barId).className = 'strength-bar ' + (score <= 1 ? 'weak' : score <= 3 ? 'medium' : 'strong');
+  document.getElementById(labelId).textContent = score <= 1 ? 'Débil' : score <= 3 ? 'Media' : 'Fuerte';
+}
+
+function resetStrength(barId, labelId) { document.getElementById(barId).className = 'strength-bar'; document.getElementById(labelId).textContent = ''; }
 
 function showToast(msg, type = 'success') {
   const t = document.createElement('div');
   t.className = `toast ${type}`;
   t.innerHTML = `<span class="toast-icon ${type}">${type === 'success' ? '✓' : '⚠'}</span> ${msg}`;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3500);
+  document.body.appendChild(t); setTimeout(() => t.remove(), 3500);
 }
+
+function cerrarSesion() { localStorage.removeItem('token'); localStorage.removeItem('usuario'); window.location.href = 'login.html'; }
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('userName').textContent   = usuario.nombre || 'Usuario';
-  document.getElementById('userRole').textContent   = usuario.rol   || '';
+  document.getElementById('userRole').textContent   = usuario.rol    || '';
   document.getElementById('userAvatar').textContent = (usuario.nombre || 'U')[0].toUpperCase();
   lucide.createIcons();
   cargar();

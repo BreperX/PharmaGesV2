@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using PharmaGes.API.Data;
 using PharmaGes.API.DTOs;
 using PharmaGes.API.Helpers;
+using PharmaGes.API.Services;
 
 namespace PharmaGes.API.Controllers
 {
@@ -12,11 +13,13 @@ namespace PharmaGes.API.Controllers
     {
         private readonly AppDbContext _db;
         private readonly JwtHelper _jwt;
+        private readonly TimeZoneService _tz;
 
-        public AuthController(AppDbContext db, JwtHelper jwt)
+        public AuthController(AppDbContext db, JwtHelper jwt, TimeZoneService tz)
         {
-            _db = db;
+            _db  = db;
             _jwt = jwt;
+            _tz  = tz;
         }
 
         [HttpPost("login")]
@@ -29,10 +32,10 @@ namespace PharmaGes.API.Controllers
             if (usuario == null)
                 return Unauthorized(new { mensaje = "Credenciales incorrectas." });
 
-            // Verificar si está bloqueado
-            if (usuario.BloqueadoHasta.HasValue && usuario.BloqueadoHasta > DateTime.UtcNow)
+            // Verificar si está bloqueado — comparar contra hora local del cliente
+            if (usuario.BloqueadoHasta.HasValue && usuario.BloqueadoHasta > _tz.Ahora())
             {
-                var minutosRestantes = (int)(usuario.BloqueadoHasta.Value - DateTime.UtcNow).TotalMinutes + 1;
+                var minutosRestantes = (int)(usuario.BloqueadoHasta.Value - _tz.Ahora()).TotalMinutes + 1;
                 return Unauthorized(new { mensaje = $"Usuario bloqueado. Intenta en {minutosRestantes} minuto(s)." });
             }
 
@@ -44,7 +47,7 @@ namespace PharmaGes.API.Controllers
                 if (usuario.IntentosFallidos >= 5)
                 {
                     int minutos = (int)Math.Pow(2, usuario.IntentosFallidos / 5);
-                    usuario.BloqueadoHasta = DateTime.UtcNow.AddMinutes(minutos);
+                    usuario.BloqueadoHasta = _tz.Ahora().AddMinutes(minutos);
                 }
 
                 await _db.SaveChangesAsync();
@@ -55,7 +58,7 @@ namespace PharmaGes.API.Controllers
 
             // Login exitoso — resetear intentos
             usuario.IntentosFallidos = 0;
-            usuario.BloqueadoHasta = null;
+            usuario.BloqueadoHasta   = null;
             await _db.SaveChangesAsync();
 
             var (token, expira) = _jwt.GenerarToken(usuario, usuario.Rol.Nombre);

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using PharmaGes.API.Data;
 using PharmaGes.API.DTOs;
 using PharmaGes.API.Models;
+using PharmaGes.API.Services;
 using System.Security.Claims;
 
 namespace PharmaGes.API.Controllers
@@ -14,10 +15,12 @@ namespace PharmaGes.API.Controllers
     public class VentasController : ControllerBase
     {
         private readonly AppDbContext _db;
+        private readonly TimeZoneService _tz;
 
-        public VentasController(AppDbContext db)
+        public VentasController(AppDbContext db, TimeZoneService tz)
         {
             _db = db;
+            _tz = tz;
         }
 
         [HttpGet]
@@ -67,9 +70,9 @@ namespace PharmaGes.API.Controllers
                 return BadRequest(new { mensaje = "La factura debe tener al menos un producto." });
 
             var usuarioId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var ahora     = _tz.Ahora();
 
-            // Validar stock y obtener medicamentos
-            var detalles = new List<DetalleFactura>();
+            var detalles  = new List<DetalleFactura>();
             decimal subtotal = 0;
 
             foreach (var item in dto.Detalles)
@@ -98,7 +101,6 @@ namespace PharmaGes.API.Controllers
             if (dto.EfectivoRecibido < subtotal)
                 return BadRequest(new { mensaje = "Efectivo insuficiente para cubrir el total." });
 
-            // Generar número correlativo
             var ultimoNum = await _db.Facturas
                 .OrderByDescending(f => f.Id)
                 .Select(f => f.NumeroCorrelativo)
@@ -110,29 +112,28 @@ namespace PharmaGes.API.Controllers
 
             var correlativo = $"F-{siguiente:D5}";
 
-            // Crear factura
             var factura = new Factura
             {
-                UsuarioId        = usuarioId,
+                UsuarioId         = usuarioId,
                 NumeroCorrelativo = correlativo,
-                Estado           = "activa",
-                Subtotal         = subtotal,
-                Total            = subtotal,
-                EfectivoRecibido = dto.EfectivoRecibido,
-                Cambio           = dto.EfectivoRecibido - subtotal,
-                Notas            = dto.Notas,
-                Detalles         = detalles
+                Estado            = "activa",
+                Subtotal          = subtotal,
+                Total             = subtotal,
+                EfectivoRecibido  = dto.EfectivoRecibido,
+                Cambio            = dto.EfectivoRecibido - subtotal,
+                Notas             = dto.Notas,
+                Detalles          = detalles,
+                CreadoEn          = ahora
             };
 
             _db.Facturas.Add(factura);
 
-            // Descontar stock y registrar movimientos
             foreach (var item in dto.Detalles)
             {
                 var med = await _db.Medicamentos.FindAsync(item.MedicamentoId);
                 var stockAnterior = med!.Stock;
-                med.Stock -= item.Cantidad;
-                med.ActualizadoEn = DateTime.UtcNow;
+                med.Stock        -= item.Cantidad;
+                med.ActualizadoEn = ahora;
 
                 _db.MovimientosInventario.Add(new MovimientoInventario
                 {
@@ -142,13 +143,20 @@ namespace PharmaGes.API.Controllers
                     Cantidad      = item.Cantidad,
                     StockAnterior = stockAnterior,
                     StockNuevo    = med.Stock,
-                    Motivo        = $"Venta {correlativo}"
+                    Motivo        = $"Venta {correlativo}",
+                    CreadoEn      = ahora
                 });
             }
 
             await _db.SaveChangesAsync();
 
-            return Ok(new { mensaje = "Venta registrada correctamente.", correlativo, total = subtotal, cambio = dto.EfectivoRecibido - subtotal });
+            return Ok(new
+            {
+                mensaje     = "Venta registrada correctamente.",
+                correlativo,
+                total       = subtotal,
+                cambio      = dto.EfectivoRecibido - subtotal
+            });
         }
 
         [HttpPut("{id}/anular")]
@@ -160,16 +168,16 @@ namespace PharmaGes.API.Controllers
             if (factura.Estado == "anulada") return BadRequest(new { mensaje = "La factura ya está anulada." });
 
             var usuarioId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var ahora     = _tz.Ahora();
 
-            // Revertir stock
             foreach (var detalle in factura.Detalles)
             {
                 var med = await _db.Medicamentos.FindAsync(detalle.MedicamentoId);
                 if (med != null)
                 {
                     var stockAnterior = med.Stock;
-                    med.Stock += detalle.Cantidad;
-                    med.ActualizadoEn = DateTime.UtcNow;
+                    med.Stock        += detalle.Cantidad;
+                    med.ActualizadoEn = ahora;
 
                     _db.MovimientosInventario.Add(new MovimientoInventario
                     {
@@ -179,7 +187,8 @@ namespace PharmaGes.API.Controllers
                         Cantidad      = detalle.Cantidad,
                         StockAnterior = stockAnterior,
                         StockNuevo    = med.Stock,
-                        Motivo        = $"Anulación factura {factura.NumeroCorrelativo}"
+                        Motivo        = $"Anulación factura {factura.NumeroCorrelativo}",
+                        CreadoEn      = ahora
                     });
                 }
             }

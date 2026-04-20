@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using PharmaGes.API.Data;
 using PharmaGes.API.DTOs;
 using PharmaGes.API.Models;
+using PharmaGes.API.Services;
 using System.Security.Claims;
 using System.Text.RegularExpressions;
 
@@ -15,10 +16,12 @@ namespace PharmaGes.API.Controllers
     public class MedicamentosController : ControllerBase
     {
         private readonly AppDbContext _db;
+        private readonly TimeZoneService _tz;
 
-        public MedicamentosController(AppDbContext db)
+        public MedicamentosController(AppDbContext db, TimeZoneService tz)
         {
             _db = db;
+            _tz = tz;
         }
 
         [HttpGet]
@@ -43,7 +46,7 @@ namespace PharmaGes.API.Controllers
 
             if (proximosAVencer == true)
                 query = query.Where(m => m.FechaCaducidad.HasValue &&
-                    m.FechaCaducidad.Value <= DateOnly.FromDateTime(DateTime.Now.AddDays(m.AlertaVencimientoDias)));
+                    m.FechaCaducidad.Value <= DateOnly.FromDateTime(_tz.Ahora().AddDays(m.AlertaVencimientoDias)));
 
             if (proximosAAgotarse == true)
                 query = query.Where(m => m.Stock <= m.StockMinimo);
@@ -94,14 +97,12 @@ namespace PharmaGes.API.Controllers
         [Authorize(Roles = "Administrador,Gerente")]
         public async Task<IActionResult> Crear([FromBody] CrearMedicamentoDto dto)
         {
-            // Validar código — solo letras, números y guiones
             if (!Regex.IsMatch(dto.Codigo, @"^[a-zA-Z0-9\-]+$"))
                 return BadRequest(new { mensaje = "El código solo puede contener letras, números y guiones." });
 
             if (await _db.Medicamentos.AnyAsync(m => m.Codigo == dto.Codigo))
                 return BadRequest(new { mensaje = "Ya existe un medicamento con ese código." });
 
-            // Validar stock no negativo
             if (dto.Stock < 0)
                 return BadRequest(new { mensaje = "El stock no puede ser negativo." });
 
@@ -141,7 +142,8 @@ namespace PharmaGes.API.Controllers
                     Cantidad      = dto.Stock,
                     StockAnterior = 0,
                     StockNuevo    = dto.Stock,
-                    Motivo        = "Ingreso inicial de medicamento"
+                    Motivo        = "Ingreso inicial de medicamento",
+                    CreadoEn      = _tz.Ahora()
                 });
                 await _db.SaveChangesAsync();
             }
@@ -171,16 +173,12 @@ namespace PharmaGes.API.Controllers
             medicamento.PrecioVenta           = dto.PrecioVenta;
             medicamento.FechaCaducidad        = dto.FechaCaducidad;
             medicamento.AlertaVencimientoDias = dto.AlertaVencimientoDias;
-            medicamento.ActualizadoEn         = DateTime.UtcNow;
+            medicamento.ActualizadoEn         = _tz.Ahora();
 
             await _db.SaveChangesAsync();
             return Ok(new { mensaje = "Medicamento actualizado correctamente." });
         }
 
-        /// <summary>
-        /// Reponer o ajustar stock — registra movimiento con quien lo hizo
-        /// tipo: "entrada" para agregar, "ajuste" para corrección, "baja" para retirar
-        /// </summary>
         [HttpPost("{id}/stock")]
         [Authorize(Roles = "Administrador,Gerente")]
         public async Task<IActionResult> AjustarStock(int id, [FromBody] AjustarStockDto dto)
@@ -209,9 +207,9 @@ namespace PharmaGes.API.Controllers
                 if (stockNuevo < 0)
                     return BadRequest(new { mensaje = $"No hay suficiente stock. Stock actual: {stockAnterior}" });
             }
-            else // ajuste
+            else
             {
-                stockNuevo = dto.Cantidad; // en ajuste, la cantidad ES el nuevo stock total
+                stockNuevo = dto.Cantidad;
                 if (stockNuevo < 0)
                     return BadRequest(new { mensaje = "El stock ajustado no puede ser negativo." });
             }
@@ -219,7 +217,7 @@ namespace PharmaGes.API.Controllers
             var usuarioId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
             medicamento.Stock         = stockNuevo;
-            medicamento.ActualizadoEn = DateTime.UtcNow;
+            medicamento.ActualizadoEn = _tz.Ahora();
 
             _db.MovimientosInventario.Add(new MovimientoInventario
             {
@@ -229,14 +227,15 @@ namespace PharmaGes.API.Controllers
                 Cantidad      = dto.Cantidad,
                 StockAnterior = stockAnterior,
                 StockNuevo    = stockNuevo,
-                Motivo        = dto.Motivo ?? $"{dto.Tipo} manual"
+                Motivo        = dto.Motivo ?? $"{dto.Tipo} manual",
+                CreadoEn      = _tz.Ahora()
             });
 
             await _db.SaveChangesAsync();
 
             return Ok(new
             {
-                mensaje       = "Stock actualizado correctamente.",
+                mensaje = "Stock actualizado correctamente.",
                 stockAnterior,
                 stockNuevo
             });
@@ -274,7 +273,7 @@ namespace PharmaGes.API.Controllers
                 return NotFound(new { mensaje = "Medicamento no encontrado." });
 
             medicamento.EsActivo      = false;
-            medicamento.ActualizadoEn = DateTime.UtcNow;
+            medicamento.ActualizadoEn = _tz.Ahora();
             await _db.SaveChangesAsync();
 
             return Ok(new { mensaje = "Medicamento eliminado correctamente." });

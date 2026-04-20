@@ -23,7 +23,6 @@ CREATE TABLE roles (
 -- Datos iniciales
 INSERT INTO roles (nombre) VALUES ('Administrador'), ('Gerente'), ('Empleado');
 GO
-
 -- ============================================================
 -- USUARIOS
 -- ============================================================
@@ -31,6 +30,7 @@ CREATE TABLE usuarios (
     id                  INT IDENTITY(1,1) PRIMARY KEY,
     rol_id              INT           NOT NULL,
     nombre              NVARCHAR(100) NOT NULL,
+    apellido            NVARCHAR(100) NOT NULL,
     email               NVARCHAR(150) NOT NULL UNIQUE,
     contrasena_hash     NVARCHAR(255) NOT NULL,
     foto_url            NVARCHAR(500) NULL,
@@ -42,14 +42,7 @@ CREATE TABLE usuarios (
 
     CONSTRAINT FK_usuarios_roles FOREIGN KEY (rol_id) REFERENCES roles(id)
 );
-
--- Usuario administrador inicial (contraseña: Admin123! — cambiar en producción)
--- Hash SHA256 de "Admin123!" en mayúsculas
-INSERT INTO usuarios (rol_id, nombre, email, contrasena_hash)
-VALUES (1, 'Administrador', 'admin@pharma.com',
-        'hash_cambiar_en_produccion');
 GO
-
 -- ============================================================
 -- SESIONES
 -- ============================================================
@@ -246,5 +239,8 @@ GO
 UPDATE usuarios 
 SET contrasena_hash = '$2a$12$sOa2RnsHZOzpJd6KtxWxR.59QZtSWwlnKhWP/ngiN/Q4JGhB/WFqe'
 WHERE email = 'admin@pharma.com';
+UPDATE usuarios 
+SET apellido = 'Admin' 
+WHERE apellido IS NULL OR apellido = '';
 -- La contraseña es: Admin123!
 

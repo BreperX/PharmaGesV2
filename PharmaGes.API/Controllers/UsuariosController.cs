@@ -4,6 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using PharmaGes.API.Data;
 using PharmaGes.API.DTOs;
 using PharmaGes.API.Models;
+using PharmaGes.API.Services;
+using System.Security.Claims;
 
 namespace PharmaGes.API.Controllers
 {
@@ -13,10 +15,12 @@ namespace PharmaGes.API.Controllers
     public class UsuariosController : ControllerBase
     {
         private readonly AppDbContext _db;
+        private readonly TimeZoneService _tz;
 
-        public UsuariosController(AppDbContext db)
+        public UsuariosController(AppDbContext db, TimeZoneService tz)
         {
             _db = db;
+            _tz = tz;
         }
 
         [HttpGet]
@@ -26,12 +30,18 @@ namespace PharmaGes.API.Controllers
             var query = _db.Usuarios.Include(u => u.Rol).Where(u => u.EsActivo);
 
             if (!string.IsNullOrWhiteSpace(busqueda))
-                query = query.Where(u => u.Nombre.Contains(busqueda) || u.Email.Contains(busqueda));
+            {
+                var b = busqueda.ToLower();
+                query = query.Where(u => u.Nombre.ToLower().Contains(b) ||
+                                         u.Apellido.ToLower().Contains(b) ||
+                                         u.Email.ToLower().Contains(b));
+            }
 
             var usuarios = await query.Select(u => new UsuarioDto
             {
                 Id       = u.Id,
                 Nombre   = u.Nombre,
+                Apellido = u.Apellido,
                 Email    = u.Email,
                 Rol      = u.Rol.Nombre,
                 FotoUrl  = u.FotoUrl,
@@ -53,6 +63,7 @@ namespace PharmaGes.API.Controllers
             {
                 Id       = u.Id,
                 Nombre   = u.Nombre,
+                Apellido = u.Apellido,
                 Email    = u.Email,
                 Rol      = u.Rol.Nombre,
                 FotoUrl  = u.FotoUrl,
@@ -70,11 +81,13 @@ namespace PharmaGes.API.Controllers
 
             var usuario = new Usuario
             {
-                RolId         = dto.RolId,
-                Nombre        = dto.Nombre,
-                Email         = dto.Email,
+                RolId          = dto.RolId,
+                Nombre         = dto.Nombre,
+                Apellido       = dto.Apellido,
+                Email          = dto.Email,
                 ContrasenaHash = BCrypt.Net.BCrypt.HashPassword(dto.Contrasena),
-                FotoUrl       = dto.FotoUrl
+                FotoUrl        = dto.FotoUrl,
+                CreadoEn       = _tz.Ahora()
             };
 
             _db.Usuarios.Add(usuario);
@@ -90,12 +103,18 @@ namespace PharmaGes.API.Controllers
             var usuario = await _db.Usuarios.FindAsync(id);
             if (usuario == null) return NotFound(new { mensaje = "Usuario no encontrado." });
 
+            var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+
+            if (id == currentUserId && !dto.EsActivo)
+                return BadRequest(new { mensaje = "No puedes desactivar tu propia cuenta." });
+
             usuario.Nombre        = dto.Nombre;
+            usuario.Apellido      = dto.Apellido;
             usuario.Email         = dto.Email;
             usuario.RolId         = dto.RolId;
             usuario.FotoUrl       = dto.FotoUrl;
             usuario.EsActivo      = dto.EsActivo;
-            usuario.ActualizadoEn = DateTime.UtcNow;
+            usuario.ActualizadoEn = _tz.Ahora();
 
             if (!string.IsNullOrWhiteSpace(dto.Contrasena))
                 usuario.ContrasenaHash = BCrypt.Net.BCrypt.HashPassword(dto.Contrasena);
@@ -108,15 +127,25 @@ namespace PharmaGes.API.Controllers
         [Authorize(Roles = "Administrador")]
         public async Task<IActionResult> Eliminar(int id)
         {
+            var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+
+            if (id == currentUserId)
+                return BadRequest(new { mensaje = "Operación denegada: No puedes eliminar la cuenta con la que has iniciado sesión." });
+
             var usuario = await _db.Usuarios.FindAsync(id);
             if (usuario == null) return NotFound(new { mensaje = "Usuario no encontrado." });
 
-            // Soft delete
-            usuario.EsActivo      = false;
-            usuario.ActualizadoEn = DateTime.UtcNow;
+            usuario.Nombre         = "Usuario";
+            usuario.Apellido       = "Eliminado";
+            usuario.Email          = $"eliminado_{id}@pharmages.local";
+            usuario.ContrasenaHash = "ANONYMIZED_ACCOUNT";
+            usuario.FotoUrl        = null;
+            usuario.EsActivo       = false;
+            usuario.ActualizadoEn  = _tz.Ahora();
+
             await _db.SaveChangesAsync();
 
-            return Ok(new { mensaje = "Usuario desactivado correctamente." });
+            return Ok(new { mensaje = "Usuario eliminado y correo liberado correctamente." });
         }
 
         [HttpGet("roles")]

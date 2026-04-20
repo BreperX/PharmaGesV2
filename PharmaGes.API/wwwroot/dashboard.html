@@ -9,7 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="components.js"></script>
 </head>
-<body data-title="Dashboard" data-subtitle="Aquí tienes un resumen de tu farmacia hoy.">
+<body data-title="Dashboard" data-subtitle="Resumen general de actividad del día.">
 
 <div class="loading-overlay" id="loading">
   <div class="loading-spinner"></div>
@@ -247,8 +247,20 @@ async function cargarDashboard() {
         responsive: true,
         plugins: { legend: { display: false } },
         scales: {
-          x: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { color: '#94a3b8', font: { size: 12 } } },
-          y: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { color: '#94a3b8', font: { size: 12 }, callback: v => Number(v).toLocaleString('es-CO') } }
+          x: { grid: { color: 'rgba(0,0,0,0.04)' }, 
+          ticks: { 
+            color: '#94a3b8', 
+            font: { size: 12 } 
+          } 
+        },
+          y: { 
+            grid: { color: 'rgba(0,0,0,0.04)' }, 
+            ticks: { 
+              color: '#94a3b8', 
+              font: { size: 12 }, 
+              callback: v => '$' + Number(v).toLocaleString('es-CO') 
+            } 
+          }
         }
       }
     });

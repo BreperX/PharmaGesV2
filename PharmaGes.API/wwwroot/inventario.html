@@ -171,11 +171,10 @@
     <button class="btn btn-outline" onclick="toggleFiltros()">
       <i data-lucide="sliders-horizontal" style="width:15px;height:15px"></i> Filtros
     </button>
-    <button class="btn btn-primary" onclick="abrirPanel(null)">
+    <button id="btnAgregar" class="btn btn-primary" onclick="abrirPanel(null)">
       <i data-lucide="plus" style="width:15px;height:15px"></i> Agregar medicamento
     </button>
   </div>
-  
   <div class="filter-bar" id="filterBar">
     <button class="filter-chip active" onclick="setFiltro(this,'todos')">
       <i data-lucide="layers"></i> todos
@@ -425,6 +424,13 @@ async function cargarNotifs() {
   }
 }
 
+function aplicarPermisosInterfaz() {
+  const btnAgregar = document.getElementById('btnAgregar');
+  if (btnAgregar && !puedeEditar) {
+    btnAgregar.style.display = 'none';
+  }
+}
+
 function medIconColor(nombre) {
   const n = nombre.toLowerCase();
   if (n.includes('inhalador')) return { bg: '#EDE9FE', color: '#7C3AED' };
@@ -472,24 +478,26 @@ function setFiltro(el, filtro) {
 function renderTabla(lista) {
   const total = lista.length;
   const totalPags = Math.max(1, Math.ceil(total / POR_PAGINA));
-  const slice = lista.slice((paginaActual-1)*POR_PAGINA, paginaActual*POR_PAGINA);
+  const slice = lista.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA);
 
-  document.getElementById('footerText').textContent = `Mostrando ${(paginaActual-1)*POR_PAGINA+1} a ${Math.min(paginaActual*POR_PAGINA, total)} de ${total} resultados`;
+  document.getElementById('footerText').textContent = `Mostrando ${(paginaActual - 1) * POR_PAGINA + 1} a ${Math.min(paginaActual * POR_PAGINA, total)} de ${total} resultados`;
 
   const body = document.getElementById('tableBody');
-  if (!slice.length) { 
-    body.innerHTML = '<div class="empty-state">No se encontraron medicamentos</div>'; 
-    renderPaginacion(0,1); 
-    return; 
+  if (!slice.length) {
+    body.innerHTML = '<div class="empty-state">No se encontraron medicamentos</div>';
+    renderPaginacion(0, 1);
+    return;
   }
 
   body.innerHTML = slice.map(m => {
     const pct = Math.min(100, Math.round(m.stock / (m.stockMaximo || 1) * 100));
     const ic = medIconColor(m.nombre);
     const dias = diasHasta(m.fechaCaducidad);
+    const clickFila = puedeEditar ? `onclick="abrirPanel(${m.id})"` : '';
+    const cursorFila = puedeEditar ? '' : 'style="cursor: default;"';
 
     let badges = [];
-    
+
     if (dias <= 0) {
       badges.push('<span class="badge vencido">vencido</span>');
     } else {
@@ -500,7 +508,7 @@ function renderTabla(lista) {
       } else if (m.stock > m.stockMaximo) {
         badges.push('<span class="badge sobre">sobrestock</span>');
       }
-      
+
       if (dias <= m.alertaVencimientoDias) {
         badges.push('<span class="badge proximo">pronto a vencer</span>');
       }
@@ -508,8 +516,8 @@ function renderTabla(lista) {
 
     if (badges.length === 0) badges.push('<span class="badge optimo">óptimo</span>');
 
-    const colorBarra = (dias <= 0 || m.estadoStock === 'agotado') ? 'var(--danger)' : 
-                       (dias <= m.alertaVencimientoDias || m.estadoStock === 'bajo') ? 'var(--warning)' : 
+    const colorBarra = (dias <= 0 || m.estadoStock === 'agotado') ? 'var(--danger)' :
+                       (dias <= m.alertaVencimientoDias || m.estadoStock === 'bajo') ? 'var(--warning)' :
                        (m.stock >= m.stockMaximo) ? '#2dd4bf' : 'var(--success)';
 
     const acciones = puedeEditar
@@ -519,7 +527,7 @@ function renderTabla(lista) {
       : '';
 
     return `
-    <div class="table-row" onclick="abrirPanel(${m.id})">
+    <div class="table-row" ${clickFila} ${cursorFila}>
       <div style="display:flex;align-items:center;gap:0.75rem">
         <div class="med-icon" style="background:${ic.bg}"><i data-lucide="pill" style="color:${ic.color}"></i></div>
         <div>
@@ -538,7 +546,7 @@ function renderTabla(lista) {
       <div style="display:flex;gap:0.4rem">${acciones}</div>
     </div>`;
   }).join('');
-  
+
   renderPaginacion(total, totalPags);
   lucide.createIcons();
 }
@@ -778,6 +786,7 @@ document.addEventListener('DOMContentLoaded', () => {
   cargarInventario();
   lucide.createIcons();
   cargarNotifs();
+  aplicarPermisosInterfaz();
 });
 
 function cerrarSesion() { localStorage.removeItem('token'); localStorage.removeItem('usuario'); window.location.href = 'login.html'; }
