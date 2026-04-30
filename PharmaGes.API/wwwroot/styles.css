@@ -480,48 +480,85 @@ html, body {
 
 /* ── MODAL ── */
 .modal-overlay {
-  position: fixed; inset: 0; background: rgba(11,31,51,0.45);
-  z-index: 300; display: none; align-items: flex-start; justify-content: center;
+  position: fixed; inset: 0; background: rgba(11,31,51,0.55);
+  z-index: 300; display: none; align-items: center; justify-content: center;
   padding: 1.5rem;
   overflow-y: auto;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(6px);
 }
 .modal-overlay.open { display: flex; }
 .modal {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: 16px; padding: 2rem; max-width: 600px; width: min(95%, 600px);
   max-height: calc(100vh - 3rem);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
   animation: modalIn 0.2s cubic-bezier(0.16,1,0.3,1);
   overflow: hidden;
+}
+.modal-eliminar {
+  padding: 2.75rem 2.5rem;
+  text-align: center;
 }
 .modal-body {
   overflow-y: auto;
   max-height: calc(100vh - 18rem);
   padding-right: 0.25rem;
 }
-@keyframes modalIn { from { opacity:0; transform:scale(0.96); } to { opacity:1; transform:scale(1); } }
+@keyframes modalIn { from { opacity:0; transform:scale(0.92); } to { opacity:1; transform:scale(1); } }
 .modal-icon  { font-size: 2rem; margin-bottom: 0.85rem; }
+.modal-icon-delete { font-size: 4rem; margin-bottom: 1.5rem; animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
 .modal-title { font-size: 1.05rem; font-weight: 600; margin-bottom: 0.4rem; color: var(--text); }
+.modal-title-delete { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.75rem; color: var(--text); }
 .modal-desc  { font-size: 0.82rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 1.5rem; }
+.modal-desc-delete { font-size: 1.1rem; font-weight: 500; color: var(--danger); margin-bottom: 2rem; line-height: 1.5; }
 .modal-actions { display: flex; gap: 0.75rem; }
 .modal-actions .btn { flex: 1; justify-content: center; }
+.btn-danger-delete {
+  background: var(--danger);
+  color: #fff;
+  padding: 0.8rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.btn-danger-delete:hover {
+  background: #DC2626;
+  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4);
+  transform: translateY(-2px);
+}
 
 /* ── TOAST ── */
 .toast {
-  position: fixed; bottom: 1.75rem; left: 50%; transform: translateX(-50%);
-  background: var(--primary); border-radius: var(--radius);
-  padding: 0.85rem 1.35rem;
-  font-size: 0.82rem; display: flex; align-items: center; gap: 0.65rem;
-  z-index: 400; box-shadow: 0 8px 24px rgba(11,31,51,0.25);
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  border-radius: var(--radius);
+  padding: 1.5rem 1.75rem;
+  font-size: 0.95rem; display: flex; align-items: center; gap: 0.75rem;
+  z-index: 400; box-shadow: 0 12px 40px rgba(0,0,0,0.2);
   animation: toastIn 0.3s cubic-bezier(0.16,1,0.3,1);
-  max-width: 360px; color: #fff; white-space: nowrap;
+  max-width: 420px; color: #fff; white-space: normal; border-radius: 12px; min-height: 60px;
 }
-@keyframes toastIn { from { opacity:0; transform:translateX(-50%) translateY(10px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
-.toast.success { background: var(--primary); border-left: 3px solid var(--success); }
-.toast.error   { background: var(--primary); border-left: 3px solid var(--danger); }
-.toast-icon.success { color: var(--success); }
-.toast-icon.error   { color: var(--danger); }
+@keyframes toastIn { from { opacity:0; transform: translate(-50%, -50%) scale(0.9); } to { opacity:1; transform: translate(-50%, -50%) scale(1); } }
+@keyframes toastOut { from { opacity:1; transform: translate(-50%, -50%) scale(1); } to { opacity:0; transform: translate(-50%, -50%) scale(0.9); } }
+.toast-success { 
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%); 
+  border-left: 4px solid #34D399;
+  box-shadow: 0 12px 40px rgba(16, 185, 129, 0.3);
+}
+.toast-error { 
+  background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%); 
+  border-left: 4px solid #F87171;
+  box-shadow: 0 12px 40px rgba(239, 68, 68, 0.3);
+}
+.toast-warning { 
+  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+  border-left: 4px solid #FBBF24;
+  box-shadow: 0 12px 40px rgba(245, 158, 11, 0.3);
+}
+.toast-info { 
+  background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+  border-left: 4px solid #60A5FA;
+  box-shadow: 0 12px 40px rgba(37, 99, 235, 0.3);
+}
 
 /* ── ALERT CARDS ── */
 .alert-card {
